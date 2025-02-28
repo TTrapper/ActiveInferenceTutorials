@@ -1,0 +1,20 @@
+{
+  "name": "active-inference-tutorials",
+  "version": "0.1.0",
+  "description": "Interactive tutorials demonstrating active inference concepts",
+  "main": "dist/bundle.js",
+  "scripts": {
+    "start": "parcel index.html",
+    "build": "parcel build index.html",
+    "clean": "rm -rf dist .parcel-cache"
+  },
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "pixi.js": "^7.3.2"
+  },
+  "devDependencies": {
+    "parcel": "^2.10.3",
+    "typescript": "^5.3.2"
+  }
+}

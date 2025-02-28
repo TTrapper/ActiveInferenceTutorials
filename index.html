@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Active Inference Tutorials</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    .container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .controls {
+      margin: 20px 0;
+      display: flex;
+      gap: 10px;
+    }
+    #simulation-canvas {
+      border: 1px solid #ccc;
+      margin: 20px 0;
+    }
+    button {
+      padding: 8px 16px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #45a049;
+    }
+    button:disabled {
+      background-color: #cccccc;
+      cursor: not-allowed;
+    }
+    .config {
+      margin: 10px 0;
+      width: 100%;
+      max-width: 500px;
+    }
+    .config-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+    select {
+      padding: 8px;
+      border-radius: 4px;
+      border: 1px solid #ccc;
+    }
+    .lesson-description {
+      margin: 20px 0;
+      padding: 15px;
+      background-color: #f8f8f8;
+      border-radius: 4px;
+      border-left: 4px solid #4CAF50;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Active Inference Tutorials</h1>
+    
+    <div class="config">
+      <div class="config-row">
+        <label for="lesson-selector">Select Lesson:</label>
+        <select id="lesson-selector">
+          <option value="state_transition">Lesson 1: Theoretical Foundations</option>
+          <option value="predator_prey">Lesson 2: Predator-Prey Simulation</option>
+        </select>
+      </div>
+    </div>
+    
+    <div id="lesson-description" class="lesson-description">
+      Lesson 1: Theoretical Foundations - Basic state transition model demonstrating how a generative model can predict future states based on transition probabilities.
+    </div>
+    
+    <div id="simulation-canvas"></div>
+    
+    <div class="controls">
+      <button id="start-button">Start Simulation</button>
+      <button id="pause-button" disabled>Pause Simulation</button>
+      <button id="reset-button" disabled>Reset Simulation</button>
+    </div>
+    
+    <div class="config">
+      <div class="config-row">
+        <label for="grid-size">Grid Size: </label>
+        <div>
+          <input type="range" id="grid-size" min="4" max="16" value="8">
+          <span id="grid-size-value">8</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Parcel will automatically process this TypeScript file -->
+  <script type="module" src="./src/main.ts"></script>
+</body>
+</html>
