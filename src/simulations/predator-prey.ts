@@ -29,6 +29,51 @@
   *   Experiment with different ways of calculating free energy and updating beliefs.
 
   This coding challenge is more involved than the previous one, but it's a great opportunity to apply the concepts of active inference in a fun and interactive way.  Don't hesitate to ask if you have any questions or need further guidance. I'm here to support you throughout the process.  Let me know if you'd like to brainstorm specific implementation details or discuss any aspect of the challenge.
+
+
+  *******************************************************************************************************************************
+  *******************************************************************************************************************************
+
+
+  LESSON 3
+
+  **Coding Challenge: Predator-Prey with Advanced Belief Updating**
+
+  **Scenario**
+
+  We'll keep the 2D grid world from the previous challenge, but now the predator will have a more advanced belief update mechanism.  Instead of simply diffusing its belief uniformly, the predator will use a Bayesian approach to update its belief based on its observations and its model of the prey's movement.
+
+  **Your Task**
+
+  1.  **Bayesian Belief Update**
+      * Implement a Bayesian belief update rule for the predator.  This means that the predator's belief about the prey's location at the next time step will be a combination of:
+          * Its prior belief (based on its model of the prey's movement).
+          * Its likelihood (based on its current observation).
+
+  2.  **Prey's Movement Model**
+      * Define a more sophisticated movement model for the prey.  Instead of moving completely randomly, the prey could have some tendency to move in a particular direction or avoid certain areas of the grid.
+
+  3.  **Predator's Generative Model**
+      * Update the predator's generative model to incorporate the new prey movement model.
+
+  4.  **Simulation and Visualization**
+      * Run the simulation and visualize the predator's belief state over time.  Observe how the predator's belief changes as it gathers more information about the prey's movement patterns.
+
+  **Hints and Suggestions**
+
+  * For the Bayesian belief update, you can use the following formula:
+      ```
+      posterior_belief = likelihood * prior_belief / normalization_factor
+      ```
+      where the normalization factor ensures that the posterior belief is a valid probability distribution.
+
+  * You can experiment with different prey movement models, such as:
+      * Biased random walk (the prey has a higher probability of moving in a certain direction).
+      * Avoidance behavior (the prey avoids certain areas of the grid, such as the edges or obstacles).
+
+  * To visualize the predator's belief state, you can use a heatmap where the color intensity represents the probability of the prey being at that location.
+
+  This challenge will help you understand how active inference agents can update their beliefs in a more sophisticated way, taking into account both their prior knowledge and their observations.  It's a step towards building more intelligent and adaptive agents that can learn and interact with their environment effectively.  Feel free to ask if you have any questions or need further guidance.  I'm here to support you as you explore this exciting area of research.
  *
  */
 
@@ -39,25 +84,41 @@ import { RandomPreyAgent } from '../agents/prey';
 import { ActiveInferencePredator } from '../agents/predator';
 
 /**
+ * Lesson types for the predator-prey simulation
+ */
+export enum LessonType {
+  LESSON_2 = 'lesson2', // Uniform belief distribution (no learning)
+  LESSON_3 = 'lesson3'  // Advanced Bayesian belief update (with learning)
+}
+
+/**
  * Predator-Prey specific simulation controller
  */
 export class PredatorPreySimulation extends BaseSimulationController {
   predator: ActiveInferencePredator;
   prey: RandomPreyAgent;
   gridWorld: GridWorld;
+  lessonType: LessonType;
 
-  constructor(gridSize: number = 8) {
+  constructor(gridSize: number = 8, lessonType: LessonType = LessonType.LESSON_2) {
     // Create the grid world environment
     const gridWorld = new GridWorld(gridSize);
     super(gridWorld);
     this.gridWorld = gridWorld;
-    
+    this.lessonType = lessonType;
+
     // Create and add prey
     this.prey = new RandomPreyAgent('prey1', [0, 0], gridWorld);
     gridWorld.addAgent(this.prey);
-    
-    // Create and add predator
-    this.predator = new ActiveInferencePredator('predator1', [gridSize - 1, gridSize - 1], gridWorld);
+
+    // Create and add predator with the appropriate model based on lesson
+    const useAdvancedModel = lessonType === LessonType.LESSON_3;
+    this.predator = new ActiveInferencePredator(
+      'predator1',
+      [gridSize - 1, gridSize - 1],
+      gridWorld,
+      useAdvancedModel
+    );
     this.predator.setTargetAgent(this.prey);
     gridWorld.addAgent(this.predator);
   }
@@ -84,7 +145,9 @@ export class PredatorPreySimulation extends BaseSimulationController {
         size: this.gridWorld.size
       },
       // Add predator's belief about prey location for visualization
-      predatorBelief: this.predator.preyBelief.map(row => [...row])
+      predatorBelief: this.predator.preyBelief.map(row => [...row]),
+      // Add lesson type for UI
+      lessonType: this.lessonType
     };
   }
 
@@ -93,15 +156,25 @@ export class PredatorPreySimulation extends BaseSimulationController {
    */
   reset(): void {
     this.pause();
-    
-    // Reset prey position
-    this.prey.position = [0, 0];
-    
-    // Reset predator position and beliefs
-    this.predator.position = [this.gridWorld.size - 1, this.gridWorld.size - 1];
-    this.predator.preyBelief = Array(this.gridWorld.size).fill(0).map(() => 
-      Array(this.gridWorld.size).fill(1 / (this.gridWorld.size * this.gridWorld.size))
+
+    // Re-initialize agents to ensure they have correct grid size
+    // Create and add prey
+    this.prey = new RandomPreyAgent('prey1', [0, 0], this.gridWorld);
+
+    // Create and add predator with the appropriate model based on lesson
+    const useAdvancedModel = this.lessonType === LessonType.LESSON_3;
+    this.predator = new ActiveInferencePredator(
+      'predator1',
+      [this.gridWorld.size - 1, this.gridWorld.size - 1],
+      this.gridWorld,
+      useAdvancedModel
     );
+    this.predator.setTargetAgent(this.prey);
+
+    // Update the environment agents
+    this.gridWorld.clearAgents();
+    this.gridWorld.addAgent(this.prey);
+    this.gridWorld.addAgent(this.predator);
 
     this.notifyStateChange();
   }
@@ -111,7 +184,42 @@ export class PredatorPreySimulation extends BaseSimulationController {
    */
   updateGridSize(size: number): void {
     if (size !== this.gridWorld.size) {
+      this.pause();
+
+      // Update grid size
       this.gridWorld.size = size;
+
+      // Recreate the predator with the new grid size
+      const useAdvancedModel = this.lessonType === LessonType.LESSON_3;
+      this.predator = new ActiveInferencePredator(
+        'predator1',
+        [size - 1, size - 1],
+        this.gridWorld,
+        useAdvancedModel
+      );
+      this.predator.setTargetAgent(this.prey);
+
+      // Update the prey position
+      this.prey.position = [0, 0];
+
+      // Update the environment agents
+      this.gridWorld.clearAgents();
+      this.gridWorld.addAgent(this.prey);
+      this.gridWorld.addAgent(this.predator);
+
+      this.notifyStateChange();
+    }
+  }
+
+  /**
+   * Change the lesson type
+   */
+  setLesson(lessonType: LessonType): void {
+    if (this.lessonType !== lessonType) {
+      this.lessonType = lessonType;
+      // Update the predator's generative model based on the lesson
+      const useAdvancedModel = lessonType === LessonType.LESSON_3;
+      this.predator.setGenerativeModel(useAdvancedModel);
       this.reset();
     }
   }

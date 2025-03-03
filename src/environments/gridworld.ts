@@ -34,7 +34,7 @@ export class GridWorld implements Environment {
    * Check if a position is valid within the grid
    */
   isValidPosition(position: Position): boolean {
-    return position[0] >= 0 && position[0] < this.size && 
+    return position[0] >= 0 && position[0] < this.size &&
            position[1] >= 0 && position[1] < this.size;
   }
 
@@ -56,10 +56,17 @@ export class GridWorld implements Environment {
     for (const agent of this.agents) {
       agent.perceive();
     }
-    
+
     // Then action phase - all agents act
     for (const agent of this.agents) {
       agent.act();
     }
+  }
+
+  /**
+   * Remove all agents from the environment
+   */
+  clearAgents(): void {
+    this.agents = [];
   }
 }

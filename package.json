@@ -2,7 +2,7 @@
   "name": "active-inference-tutorials",
   "version": "0.1.0",
   "description": "Interactive tutorials demonstrating active inference concepts",
-  "main": "dist/bundle.js",
+  "source": "index.html",
   "scripts": {
     "start": "parcel index.html",
     "build": "parcel build index.html",
