@@ -55,6 +55,14 @@ export interface SimulationState {
     size: number;
     [key: string]: any; // Additional properties based on environment type
   };
+  // For predator-prey simulation
+  predatorBelief?: number[][];
+  preyMovementPolicy?: number[][];
+  policyEditorActive?: boolean;
+  // For state machine simulation
+  transitionMatrix?: number[][];
+  // General properties
+  lessonType?: string;
   [key: string]: any; // Any additional simulation state
 }
 

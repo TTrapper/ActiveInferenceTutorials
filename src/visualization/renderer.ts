@@ -12,7 +12,7 @@ export class PixiRenderer {
   gridLines: PIXI.Graphics;
   beliefHeatmap: PIXI.Graphics;
 
-  constructor(canvasContainer: HTMLElement, width: number = 400, height: number = 400) {
+  constructor(canvasContainer: HTMLElement, width: number = 500, height: number = 500) {
     // Initialize PIXI Application
     this.app = new PIXI.Application({
       width,
@@ -23,7 +23,7 @@ export class PixiRenderer {
     
     canvasContainer.appendChild(this.app.view as unknown as Node);
 
-    this.gridSize = 8;
+    this.gridSize = 32; // Fixed at 32x32 for predator-prey
     this.cellSize = width / this.gridSize;
     
     // Create graphics containers

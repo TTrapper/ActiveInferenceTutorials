@@ -38,7 +38,8 @@ export class StateTransitionSimulation extends BaseSimulationController {
   gridWorld: GridWorld;
   agent: StateMachineAgent;
 
-  constructor(gridSize: number = 8) {
+  constructor() {
+    const gridSize = 8;
     // Create the grid world environment
     const gridWorld = new GridWorld(gridSize);
     super(gridWorld);
@@ -87,13 +88,5 @@ export class StateTransitionSimulation extends BaseSimulationController {
     this.notifyStateChange();
   }
 
-  /**
-   * Update simulation parameters
-   */
-  updateGridSize(size: number): void {
-    if (size !== this.gridWorld.size) {
-      this.gridWorld.size = size;
-      this.reset();
-    }
-  }
+  // Grid size is now fixed
 }

@@ -39,12 +39,13 @@ export class GridWorld implements Environment {
   }
 
   /**
-   * Normalize a position to ensure it's within grid boundaries (wrap around)
+   * Constrain a position to ensure it's within grid boundaries (no wrapping)
    */
   normalizePosition(position: Position): Position {
+    // If the position is out of bounds, return the closest valid position
     return [
-      (position[0] + this.size) % this.size,
-      (position[1] + this.size) % this.size
+      Math.max(0, Math.min(this.size - 1, position[0])),
+      Math.max(0, Math.min(this.size - 1, position[1]))
     ];
   }
 

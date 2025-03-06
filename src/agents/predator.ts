@@ -189,7 +189,7 @@ export class ActiveInferencePredator implements Agent {
   perceive(): void {
     if (!this.targetAgent) return;
 
-    const visionRange = 1;
+    const visionRange = this.environment.size;
     const perceivedPositions: Position[] = [];
 
     // Check all positions within vision range
@@ -266,35 +266,59 @@ export class ActiveInferencePredator implements Agent {
   }
 
   /**
-   * Choose and execute action based on active inference principles
-   */
+  * Samples one element from the options array based on the weights.
+  * @param options Array of actions.
+  * @param weights Array of weights corresponding to each action.
+  * @returns A sampled action.
+  */
+  sampleFromWeights<T>(options: T[], weights: number[]): T | null {
+    const totalWeight = weights.reduce((sum, weight) => sum + weight, 0);
+    let threshold = Math.random() * totalWeight;
+    for (let i = 0; i < options.length; i++) {
+      threshold -= weights[i];
+      if (threshold <= 0) {
+        return options[i];
+      }
+    }
+    return options[options.length - 1] || null; // Fallback in case of numerical issues.
+  }
+
+  /**
+  * Choose and execute action based on active inference principles,
+  * but instead of teleporting to the sampled location, take a step
+  * in its direction with integer movements.
+  */
   act(): void {
-    let bestMove: Position | null = null;
-    let highestBelief = -1;
+    const possibleMoves: Position[] = [];
+    const moveWeights: number[] = [];
 
-    // Consider all possible moves using free energy principle
-    // Move to the position with highest belief of finding prey
-    for (let dirIndex = 0; dirIndex < DIRECTION_VECTORS.length; dirIndex++) {
-      const dir = DIRECTION_VECTORS[dirIndex];
-      const newPos = this.environment.normalizePosition([
-        this.position[0] + dir[0],
-        this.position[1] + dir[1]
-      ]);
-
-      // Check belief value at the new position
-      const beliefAtNewPos = this.preyBelief[newPos[0]][newPos[1]];
-      if (beliefAtNewPos > highestBelief) {
-        highestBelief = beliefAtNewPos;
-        bestMove = [...dir]; // Create a mutable copy
+    // Calculate weights for each possible move based on the belief grid.
+    for (let x = 0; x < this.preyBelief.length; x++) {
+      for (let y = 0; y < this.preyBelief[x].length; y++) {
+        possibleMoves.push([x, y]);
+        moveWeights.push(this.preyBelief[x][y]);
       }
     }
 
-    // Execute the best move if found
-    if (bestMove) {
-      this.position = this.environment.normalizePosition([
-        this.position[0] + bestMove[0],
-        this.position[1] + bestMove[1]
-      ]);
+    // Sample an action according to the computed weights.
+    const selectedMove = this.sampleFromWeights(possibleMoves, moveWeights);
+    if (selectedMove) {
+      const targetPos: Position = [selectedMove[0], selectedMove[1]];
+      const currentPos: Position = this.position;
+
+      // Compute the difference in each coordinate.
+      const dx = targetPos[0] - currentPos[0];
+      const dy = targetPos[1] - currentPos[1];
+
+      // Determine a discrete step by taking the sign of the differences.
+      const stepX = Math.sign(dx); // will be -1, 0, or 1
+      const stepY = Math.sign(dy); // will be -1, 0, or 1
+
+      // Update position by adding the discrete step.
+      const newPos: Position = [currentPos[0] + stepX, currentPos[1] + stepY];
+
+      // Use the environment's normalization if needed (e.g., to handle wrapping or boundaries).
+      this.position = this.environment.normalizePosition(newPos);
     }
   }
 

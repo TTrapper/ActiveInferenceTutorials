@@ -80,7 +80,7 @@
 import { BaseSimulationController } from '../core/simulation';
 import { SimulationState } from '../core/types';
 import { GridWorld } from '../environments/gridworld';
-import { RandomPreyAgent } from '../agents/prey';
+import { PolicyPreyAgent, MovementPolicy } from '../agents/prey';
 import { ActiveInferencePredator } from '../agents/predator';
 
 /**
@@ -91,31 +91,35 @@ export enum LessonType {
   LESSON_3 = 'lesson3'  // Advanced Bayesian belief update (with learning)
 }
 
+// Fixed grid size for the predator-prey simulation
+const FIXED_GRID_SIZE = 32;
+
 /**
  * Predator-Prey specific simulation controller
  */
 export class PredatorPreySimulation extends BaseSimulationController {
   predator: ActiveInferencePredator;
-  prey: RandomPreyAgent;
+  prey: PolicyPreyAgent;
   gridWorld: GridWorld;
   lessonType: LessonType;
+  policyEditorActive: boolean = false;
 
-  constructor(gridSize: number = 8, lessonType: LessonType = LessonType.LESSON_2) {
-    // Create the grid world environment
-    const gridWorld = new GridWorld(gridSize);
+  constructor(lessonType: LessonType = LessonType.LESSON_2) {
+    // Create the grid world environment with fixed size
+    const gridWorld = new GridWorld(FIXED_GRID_SIZE);
     super(gridWorld);
     this.gridWorld = gridWorld;
     this.lessonType = lessonType;
 
     // Create and add prey
-    this.prey = new RandomPreyAgent('prey1', [0, 0], gridWorld);
+    this.prey = new PolicyPreyAgent('prey1', [5, 5], gridWorld);
     gridWorld.addAgent(this.prey);
 
     // Create and add predator with the appropriate model based on lesson
     const useAdvancedModel = lessonType === LessonType.LESSON_3;
     this.predator = new ActiveInferencePredator(
       'predator1',
-      [gridSize - 1, gridSize - 1],
+      [25, 25], // Position predator away from prey
       gridWorld,
       useAdvancedModel
     );
@@ -146,9 +150,43 @@ export class PredatorPreySimulation extends BaseSimulationController {
       },
       // Add predator's belief about prey location for visualization
       predatorBelief: this.predator.preyBelief.map(row => [...row]),
+      // Add prey movement policy for policy editor
+      preyMovementPolicy: this.prey.movementPolicy.map(row => [...row]),
       // Add lesson type for UI
-      lessonType: this.lessonType
+      lessonType: this.lessonType,
+      // Add policy editor active state
+      policyEditorActive: this.policyEditorActive
     };
+  }
+
+  /**
+   * Update the prey's movement policy
+   * @param x X coordinate in policy grid (0-4)
+   * @param y Y coordinate in policy grid (0-4)
+   */
+  updatePreyPolicy(x: number, y: number): void {
+    this.prey.incrementPolicyCell(x, y);
+    this.notifyStateChange();
+  }
+
+  /**
+   * Reset prey's movement policy to uniform
+   */
+  resetPreyPolicy(): void {
+    this.prey.initializeUniformPolicy();
+    this.notifyStateChange();
+  }
+
+  /**
+   * Toggle the policy editor active state
+   */
+  togglePolicyEditor(active?: boolean): void {
+    if (active !== undefined) {
+      this.policyEditorActive = active;
+    } else {
+      this.policyEditorActive = !this.policyEditorActive;
+    }
+    this.notifyStateChange();
   }
 
   /**
@@ -159,13 +197,13 @@ export class PredatorPreySimulation extends BaseSimulationController {
 
     // Re-initialize agents to ensure they have correct grid size
     // Create and add prey
-    this.prey = new RandomPreyAgent('prey1', [0, 0], this.gridWorld);
+    this.prey = new PolicyPreyAgent('prey1', [5, 5], this.gridWorld);
 
     // Create and add predator with the appropriate model based on lesson
     const useAdvancedModel = this.lessonType === LessonType.LESSON_3;
     this.predator = new ActiveInferencePredator(
       'predator1',
-      [this.gridWorld.size - 1, this.gridWorld.size - 1],
+      [25, 25], // Position predator away from prey
       this.gridWorld,
       useAdvancedModel
     );
@@ -177,38 +215,6 @@ export class PredatorPreySimulation extends BaseSimulationController {
     this.gridWorld.addAgent(this.predator);
 
     this.notifyStateChange();
-  }
-
-  /**
-   * Update simulation parameters
-   */
-  updateGridSize(size: number): void {
-    if (size !== this.gridWorld.size) {
-      this.pause();
-
-      // Update grid size
-      this.gridWorld.size = size;
-
-      // Recreate the predator with the new grid size
-      const useAdvancedModel = this.lessonType === LessonType.LESSON_3;
-      this.predator = new ActiveInferencePredator(
-        'predator1',
-        [size - 1, size - 1],
-        this.gridWorld,
-        useAdvancedModel
-      );
-      this.predator.setTargetAgent(this.prey);
-
-      // Update the prey position
-      this.prey.position = [0, 0];
-
-      // Update the environment agents
-      this.gridWorld.clearAgents();
-      this.gridWorld.addAgent(this.prey);
-      this.gridWorld.addAgent(this.predator);
-
-      this.notifyStateChange();
-    }
   }
 
   /**
