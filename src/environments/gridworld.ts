@@ -53,14 +53,15 @@ export class GridWorld implements Environment {
    * Execute one simulation step for all agents
    */
   step(): void {
-    // First perception phase - all agents perceive
-    for (const agent of this.agents) {
-      agent.perceive();
-    }
 
-    // Then action phase - all agents act
+    // Action phase - all agents act
     for (const agent of this.agents) {
       agent.act();
+    }
+
+    // Perception phase - all agents perceive
+    for (const agent of this.agents) {
+      agent.perceive();
     }
   }
 
