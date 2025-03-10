@@ -181,31 +181,21 @@ export class PixiRenderer {
    */
   private updateBeliefHeatmap(beliefMatrix: number[][]): void {
     this.beliefHeatmap.clear();
-    
-    // Find max belief for normalization
-    let maxBelief = 0;
-    for (let i = 0; i < beliefMatrix.length; i++) {
-      for (let j = 0; j < beliefMatrix[i].length; j++) {
-        maxBelief = Math.max(maxBelief, beliefMatrix[i][j]);
-      }
-    }
-    
+
     // Draw cells with opacity based on belief strength
     for (let i = 0; i < beliefMatrix.length; i++) {
       for (let j = 0; j < beliefMatrix[i].length; j++) {
-        if (maxBelief > 0) {
-          const normalizedBelief = beliefMatrix[i][j] / maxBelief;
-          const alpha = Math.min(normalizedBelief * 0.7, 0.7); // Cap at 0.7 opacity
-          
-          this.beliefHeatmap.beginFill(0x0000ff, alpha);
-          this.beliefHeatmap.drawRect(
-            j * this.cellSize, 
-            i * this.cellSize, 
-            this.cellSize, 
-            this.cellSize
-          );
-          this.beliefHeatmap.endFill();
-        }
+        const normalizedBelief = beliefMatrix[i][j];
+        const alpha = Math.min(normalizedBelief * 0.7, 0.7); // Cap at 0.7 opacity
+
+        this.beliefHeatmap.beginFill(0x0000ff, alpha);
+        this.beliefHeatmap.drawRect(
+          j * this.cellSize, 
+          i * this.cellSize, 
+          this.cellSize, 
+          this.cellSize
+        );
+        this.beliefHeatmap.endFill();
       }
     }
   }
