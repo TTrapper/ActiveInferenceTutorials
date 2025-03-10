@@ -155,6 +155,7 @@ export class ActiveInferencePredator implements Agent {
     this.id = id;
     this.position = [...position];
     this.environment = environment;
+    this.visionRange = environment.size;
 
     // Initialize belief about prey's position to uniform distribution
     this.preyBelief = Array(environment.size).fill(0).map(() =>
@@ -186,15 +187,14 @@ export class ActiveInferencePredator implements Agent {
   /**
    * Perceive the environment and update beliefs about prey location
    */
-  perceive(): void {
+  perceive(doUpdateBelief: boolean = true): Position[] {
     if (!this.targetAgent) return;
 
-    const visionRange = this.environment.size;
     const perceivedPositions: Position[] = [];
 
     // Check all positions within vision range
-    for (let i = -visionRange; i <= visionRange; i++) {
-      for (let j = -visionRange; j <= visionRange; j++) {
+    for (let i = -this.visionRange; i <= this.visionRange; i++) {
+      for (let j = -this.visionRange; j <= this.visionRange; j++) {
         const newPos: Position = this.environment.normalizePosition([
           this.position[0] + i,
           this.position[1] + j
@@ -207,7 +207,9 @@ export class ActiveInferencePredator implements Agent {
     let preyFound = false;
     for (const pos of perceivedPositions) {
       if (pos[0] === this.targetAgent.position[0] && pos[1] === this.targetAgent.position[1]) {
-        this.updateBelief(this.targetAgent.position);
+        if (doUpdateBelief) {
+          this.updateBelief(this.targetAgent.position);
+        }
         preyFound = true;
         break;
       }
@@ -216,6 +218,8 @@ export class ActiveInferencePredator implements Agent {
     if (!preyFound) {
       this.updateBelief(null);
     }
+
+    return perceivedPositions
   }
 
   /**

@@ -150,6 +150,8 @@ export class PredatorPreySimulation extends BaseSimulationController {
       },
       // Add predator's belief about prey location for visualization
       predatorBelief: this.predator.preyBelief.map(row => [...row]),
+      // Add the positions that the predator can see
+      predatorVision: this.predator.perceive(false),
       // Add prey movement policy for policy editor
       preyMovementPolicy: this.prey.movementPolicy.map(row => [...row]),
       // Add lesson type for UI

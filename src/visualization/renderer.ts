@@ -1,5 +1,5 @@
 import * as PIXI from 'pixi.js';
-import { SimulationState } from '../core/types';
+import { SimulationState, Position } from '../core/types';
 
 /**
  * Renderer for the simulation using PixiJS
@@ -11,6 +11,7 @@ export class PixiRenderer {
   sprites: Map<string, PIXI.Graphics> = new Map();
   gridLines: PIXI.Graphics;
   beliefHeatmap: PIXI.Graphics;
+  visionHeatmap: PIXI.Graphics;
 
   constructor(canvasContainer: HTMLElement, width: number = 500, height: number = 500) {
     // Initialize PIXI Application
@@ -28,9 +29,11 @@ export class PixiRenderer {
     
     // Create graphics containers
     this.beliefHeatmap = new PIXI.Graphics();
+    this.visionHeatmap = new PIXI.Graphics();
     this.gridLines = new PIXI.Graphics();
     
     this.app.stage.addChild(this.beliefHeatmap);
+    this.app.stage.addChild(this.visionHeatmap);
     this.app.stage.addChild(this.gridLines);
     
     // Draw initial grid
@@ -97,8 +100,9 @@ export class PixiRenderer {
       this.drawGrid();
     }
     
-    // Clear previous heatmap
+    // Clear previous graphics
     this.beliefHeatmap.clear();
+    this.visionHeatmap.clear();
     
     // Update belief heatmap based on simulation type
     if (state.predatorBelief) {
@@ -107,6 +111,10 @@ export class PixiRenderer {
     } else if (state.transitionMatrix) {
       // For state machine: show transition probabilities from current state
       this.updateTransitionMatrixVisualization(state);
+    }
+    if (state.predatorVision) {
+      // For predator-prey simulation: show what cells the predator can see
+      this.updatePredatorVision(state.predatorVision);
     }
     
     // Update or create agent sprites
@@ -196,6 +204,32 @@ export class PixiRenderer {
           this.cellSize
         );
         this.beliefHeatmap.endFill();
+      }
+    }
+  }
+
+  /**
+   * Black out cells the predator can't see
+   */
+  private updatePredatorVision(viewedPositions: Position[]): void {
+    this.visionHeatmap.clear();
+    const alpha = 0.5;
+
+    // Create a set for faster lookup
+    const visibleCells = new Set(viewedPositions.map(pos => `${pos[0]},${pos[1]}`));
+
+    for (let y = 0; y < this.gridSize; y++) {
+      for (let x = 0; x < this.gridSize; x++) {
+        if (!visibleCells.has(`${y},${x}`)) {
+          this.visionHeatmap.beginFill(0x000000, alpha);
+          this.visionHeatmap.drawRect(
+            x * this.cellSize,
+            y * this.cellSize,
+            this.cellSize,
+            this.cellSize
+          );
+          this.visionHeatmap.endFill();
+        }
       }
     }
   }
