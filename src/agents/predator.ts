@@ -193,6 +193,13 @@ export class ActiveInferencePredator implements Agent {
   }
 
   /**
+   * Set the predator's vision range
+   */
+  setVisionRange(range: number): void {
+    this.visionRange = Math.max(1, Math.min(range, this.environment.size));
+  }
+
+  /**
    * Perceive the environment and update beliefs about prey location
    */
   perceive(doUpdateBelief: boolean = true): Position[] {

@@ -26,6 +26,9 @@ function initialize() {
   const policyEditor = document.getElementById('policy-editor');
   const policyGrid = document.getElementById('policy-grid');
   const resetPolicyButton = document.getElementById('reset-policy-button') as HTMLButtonElement;
+  const visionRangeConfig = document.getElementById('vision-range-config');
+  const visionRangeSlider = document.getElementById('vision-range-slider') as HTMLInputElement;
+  const visionRangeValue = document.getElementById('vision-range-value');
 
   if (!canvasContainer) {
     console.error('Canvas container not found!');
@@ -148,6 +151,20 @@ function initialize() {
   }
 
   /**
+   * Show or hide the vision range slider based on the simulation type
+   */
+  function toggleVisionRangeSlider(simulationType: SimulationType) {
+    if (visionRangeConfig && visionRangeConfig instanceof HTMLElement) {
+      if (simulationType === SimulationType.PREDATOR_PREY_L2 ||
+          simulationType === SimulationType.PREDATOR_PREY_L3) {
+        visionRangeConfig.style.display = 'flex';
+      } else {
+        visionRangeConfig.style.display = 'none';
+      }
+    }
+  }
+
+  /**
    * Switch between different simulations/lessons
    */
   function switchSimulation(simulationType: SimulationType) {
@@ -187,6 +204,9 @@ function initialize() {
     // Toggle policy editor visibility
     togglePolicyEditor(simulationType);
 
+    // Toggle vision range slider visibility
+    toggleVisionRangeSlider(simulationType);
+
     // Reset button states
     startButton.disabled = false;
     pauseButton.disabled = true;
@@ -201,6 +221,19 @@ function initialize() {
     lessonSelector.addEventListener('change', () => {
       const selectedLesson = lessonSelector.value as SimulationType;
       switchSimulation(selectedLesson);
+    });
+  }
+
+  // Set up vision range slider
+  if (visionRangeSlider && visionRangeValue) {
+    visionRangeSlider.addEventListener('input', () => {
+      const range = parseInt(visionRangeSlider.value);
+      visionRangeValue.textContent = range.toString();
+      
+      // Update predator vision range if we have a predator-prey simulation
+      if (currentSimulation && 'setVisionRange' in currentSimulation) {
+        (currentSimulation as any).setVisionRange(range);
+      }
     });
   }
 

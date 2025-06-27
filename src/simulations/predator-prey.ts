@@ -192,6 +192,14 @@ export class PredatorPreySimulation extends BaseSimulationController {
   }
 
   /**
+   * Update the predator's vision range
+   */
+  setVisionRange(range: number): void {
+    this.predator.setVisionRange(range);
+    this.notifyStateChange();
+  }
+
+  /**
    * Reset the simulation to initial state
    */
   reset(): void {
