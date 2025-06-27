@@ -20,6 +20,7 @@ function initialize() {
   const canvasContainer = document.getElementById('simulation-canvas');
   const startButton = document.getElementById('start-button') as HTMLButtonElement;
   const pauseButton = document.getElementById('pause-button') as HTMLButtonElement;
+  const stepButton = document.getElementById('step-button') as HTMLButtonElement;
   const resetButton = document.getElementById('reset-button') as HTMLButtonElement;
   const lessonSelector = document.getElementById('lesson-selector') as HTMLSelectElement;
   const lessonDescription = document.getElementById('lesson-description');
@@ -210,6 +211,7 @@ function initialize() {
     // Reset button states
     startButton.disabled = false;
     pauseButton.disabled = true;
+    stepButton.disabled = false;
     resetButton.disabled = false;
 
     // Initialize the simulation
@@ -243,6 +245,7 @@ function initialize() {
       currentSimulation.start(300); // Update every 300ms
       startButton.disabled = true;
       pauseButton.disabled = false;
+      stepButton.disabled = true;
       resetButton.disabled = false;
     }
   });
@@ -252,6 +255,13 @@ function initialize() {
       currentSimulation.pause();
       startButton.disabled = false;
       pauseButton.disabled = true;
+      stepButton.disabled = false;
+    }
+  });
+
+  stepButton.addEventListener('click', () => {
+    if (currentSimulation) {
+      currentSimulation.step();
     }
   });
 
@@ -260,6 +270,7 @@ function initialize() {
       currentSimulation.reset();
       startButton.disabled = false;
       pauseButton.disabled = true;
+      stepButton.disabled = false;
     }
   });
 
