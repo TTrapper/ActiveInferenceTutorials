@@ -66,24 +66,35 @@ export class PixiRenderer {
   private createAgentSprite(agentType: string): PIXI.Graphics {
     const sprite = new PIXI.Graphics();
     
-    // Different colors and shapes based on agent type
+    // Different graphics based on agent type
     if (agentType === 'predator') {
-      sprite.beginFill(0xff0000);
-      sprite.drawCircle(0, 0, this.cellSize * 0.3);
+      // Create cat emoji text
+      const catText = new PIXI.Text('🐱', {
+        fontSize: this.cellSize * 0.8,
+        align: 'center'
+      });
+      catText.anchor.set(0.5, 0.5);
+      sprite.addChild(catText);
     } else if (agentType === 'prey') {
-      sprite.beginFill(0x00cc00);
-      sprite.drawCircle(0, 0, this.cellSize * 0.3);
+      // Create mouse emoji text
+      const mouseText = new PIXI.Text('🐭', {
+        fontSize: this.cellSize * 0.8,
+        align: 'center'
+      });
+      mouseText.anchor.set(0.5, 0.5);
+      sprite.addChild(mouseText);
     } else if (agentType === 'state_machine') {
       sprite.beginFill(0x9933ff); // Purple for state machine
       sprite.drawRect(-this.cellSize * 0.25, -this.cellSize * 0.25, 
                        this.cellSize * 0.5, this.cellSize * 0.5);
+      sprite.endFill();
     } else {
       // Default appearance
       sprite.beginFill(0x0000ff);
       sprite.drawCircle(0, 0, this.cellSize * 0.3);
+      sprite.endFill();
     }
     
-    sprite.endFill();
     this.app.stage.addChild(sprite);
     
     return sprite;
