@@ -4,7 +4,7 @@
   "description": "Interactive tutorials demonstrating active inference concepts",
   "source": "index.html",
   "scripts": {
-    "start": "parcel index.html",
+    "start": "parcel index.html --no-cache",
     "build": "parcel build index.html",
     "clean": "rm -rf dist .parcel-cache"
   },
