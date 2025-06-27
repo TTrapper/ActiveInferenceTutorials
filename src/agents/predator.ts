@@ -8,7 +8,7 @@ export interface PreyGenerativeModel {
   /**
    * Update the model based on observed prey position
    */
-  update(preyPosition: Position): void;
+  update(preyPosition: Position | null): void;
 
   /**
    * Get movement probability distribution
@@ -28,7 +28,7 @@ export interface PreyGenerativeModel {
 export class UniformPreyModel implements PreyGenerativeModel {
   constructor(private environment: GridWorld) {}
 
-  update(preyPosition: Position): void {
+  update(preyPosition: Position | null): void {
     // No learning in the uniform model
   }
 
@@ -91,7 +91,14 @@ export class BayesianPreyModel implements PreyGenerativeModel {
     this.reset();
   }
 
-  update(preyPosition: Position): void {
+  update(preyPosition: Position | null): void {
+    // If the prey wasn't seen, set lastPreyPosition to null because we only update
+    // on consequtive moves.
+    // TODO We should apply a soft update when lastPreyPosition = null, based on belief about where the prey *could* have come from
+    if (preyPosition === null) {
+      this.lastPreyPosition = null;
+      return;
+    }
     if (this.lastPreyPosition !== null) {
       const directionMoved = this.computeDirectionMoved(this.lastPreyPosition, preyPosition);
       const currentCount = this.movementCounts.get(directionMoved.toString()) ?? 0;
@@ -150,6 +157,7 @@ export class ActiveInferencePredator implements Agent {
   preyBelief: number[][];
   preyModel: PreyGenerativeModel;
   targetAgent: Agent | null = null;
+  visionRange: number;
 
   constructor(id: string, position: Position, environment: GridWorld, useAdvancedModel: boolean = false) {
     this.id = id;
@@ -191,7 +199,6 @@ export class ActiveInferencePredator implements Agent {
     if (!this.targetAgent) return;
 
     const perceivedPositions: Position[] = [];
-
     // Check all positions within vision range
     for (let i = -this.visionRange; i <= this.visionRange; i++) {
       for (let j = -this.visionRange; j <= this.visionRange; j++) {
@@ -208,7 +215,7 @@ export class ActiveInferencePredator implements Agent {
     for (const pos of perceivedPositions) {
       if (pos[0] === this.targetAgent.position[0] && pos[1] === this.targetAgent.position[1]) {
         if (doUpdateBelief) {
-          this.updateBelief(this.targetAgent.position);
+          this.updateBelief(this.targetAgent.position, perceivedPositions);
         }
         preyFound = true;
         break;
@@ -216,16 +223,17 @@ export class ActiveInferencePredator implements Agent {
     }
 
     if (!preyFound) {
-      this.updateBelief(null);
+      this.updateBelief(null, perceivedPositions);
     }
 
     return perceivedPositions
   }
 
   /**
-   * Update belief about prey's location based on observation and model for prey behavior
+   * Update belief about prey's NEXT location based on observation and model for prey behavior
+   * TODO cleanly separate belief about the CURRENT state of the world from PREDICTION about the future and ACTION
    */
-  private updateBelief(preyPosition: Position | null): void {
+  private updateBelief(preyPosition: Position | null, perceivedPositions: Array<Position>): void {
     if (preyPosition) {
       // If prey is observed, update model and set probabilities based on model
       // Reset belief grid to 0
@@ -234,6 +242,7 @@ export class ActiveInferencePredator implements Agent {
       }
 
       // Update the generative model with the observed prey position
+      // FIXME preyModel needs to take into account the situation where we didn't see the prey in the last step
       this.preyModel.update(preyPosition);
 
       // Get movement probabilities from the model
@@ -249,23 +258,37 @@ export class ActiveInferencePredator implements Agent {
         this.preyBelief[possiblePreyPos[0]][possiblePreyPos[1]] = probability;
       });
     } else {
-      // If prey is not observed, update beliefs with decay factor
-      let sum = 0;
+      /* Spread the probability of the prey's next position according to the predator's belief
+       * about where the prey might be and the model of the prey's movement.
+       * NOTE this is a convolution over belief with the preyModel as the kernel
+       */
+
+      this.preyModel.update(preyPosition);
+      // Set the spots we just saw to zero, because we didn't see the prey there
+      for (let position of perceivedPositions) {
+        this.preyBelief[position[0]][position[1]] = 0.0
+      }
+      this.normalizePreyBelief();
+      // Initialize a new belief matrix
+      const newPreyBelief : number[][] = Array(this.environment.size)
+        .fill(0.0)
+        .map(() =>
+          Array(this.environment.size).fill(0)
+        );
+      // Do the convolution
       for (let i = 0; i < this.environment.size; i++) {
         for (let j = 0; j < this.environment.size; j++) {
-          this.preyBelief[i][j] *= 0.99;
-          sum += this.preyBelief[i][j];
+          this.preyModel.getMovementProbabilities().forEach((probability, moveKey) => {
+            const move: Position = this.arrayFromString(moveKey);
+            const possiblePreyPos : Position = this.environment.normalizePosition(
+              [i + move[0], j + move[1]]
+            )
+            newPreyBelief[possiblePreyPos[0]][possiblePreyPos[1]] += probability * this.preyBelief[i][j]
+          });
         }
       }
-
-      // Normalize to ensure probabilities sum to 1
-      if (sum > 0) {
-        for (let i = 0; i < this.environment.size; i++) {
-          for (let j = 0; j < this.environment.size; j++) {
-            this.preyBelief[i][j] /= sum;
-          }
-        }
-      }
+      this.preyBelief = newPreyBelief;
+      this.normalizePreyBelief();
     }
   }
 
@@ -332,6 +355,25 @@ export class ActiveInferencePredator implements Agent {
   */
   arrayFromString(str: string): Position {
     return str.split(',').map(Number) as Position;
+  }
+
+  /**
+   * Make preyBelief so probabilities sum to 1
+   */
+  normalizePreyBelief() {
+    let sum = 0;
+    for (let i = 0; i < this.environment.size; i++) {
+      for (let j = 0; j < this.environment.size; j++){
+        sum += this.preyBelief[i][j];
+      }
+    }
+    if (sum > 0) {
+      for (let i = 0; i < this.environment.size; i++) {
+        for (let j = 0; j < this.environment.size; j++) {
+          this.preyBelief[i][j] /= sum;
+        }
+      }
+    }
   }
 
   /**
