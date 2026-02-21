@@ -64,8 +64,10 @@ export interface SimulationState {
     size: number;
     [key: string]: any; // Additional properties based on environment type
   };
-  // For predator-prey simulation
+  // Heatmap data for visualization
   predatorBelief?: number[][];
+  preyTrueProbs?: number[][];
+  predatorModelProbs?: number[][];
   // General properties
   lessonType?: string;
   [key: string]: any; // Any additional simulation state

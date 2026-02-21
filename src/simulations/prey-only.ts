@@ -27,6 +27,11 @@ export class PreyOnlySimulation extends BaseSimulationController {
   }
 
   getState(): SimulationState {
+    const preyPolicy = this.prey.getCurrentPolicy();
+    const preyTrueProbs = this.gridWorld.policyToPositionGrid(
+      preyPolicy, this.prey.position
+    );
+
     return {
       agents: [
         {
@@ -39,6 +44,7 @@ export class PreyOnlySimulation extends BaseSimulationController {
         type: 'gridworld',
         size: this.gridWorld.size
       },
+      preyTrueProbs,
       lessonType: 'lesson1'
     };
   }

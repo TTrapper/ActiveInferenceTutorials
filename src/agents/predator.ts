@@ -69,11 +69,19 @@ export class BayesianWorldModel implements PreyGenerativeModel {
   }
 
   getMovementProbabilities(): Map<string, number> {
-    const dirCounts = this.lastState !== null
-      ? this.transitionCounts.get(this.lastState)
-      : undefined;
+    if (this.lastState === null) return new Map();
+    return this.getMovementProbabilitiesForState(this.lastState);
+  }
 
-    // No data for this state yet — return empty map
+  /**
+   * Query the learned model for a specific state key.
+   * Returns direction → probability map, or empty map if unseen.
+   */
+  getMovementProbabilitiesForState(
+    state: string
+  ): Map<string, number> {
+    const dirCounts = this.transitionCounts.get(state);
+
     if (!dirCounts || dirCounts.size === 0) {
       return new Map();
     }
@@ -123,7 +131,7 @@ export class ActiveInferencePredator implements Agent {
   asciiSymbol = 'P';
   environment: GridWorld;
   preyBelief: number[][];
-  preyModel!: PreyGenerativeModel;
+  preyModel!: BayesianWorldModel;
   targetAgent: Agent | null = null;
   visionRange: number;
 

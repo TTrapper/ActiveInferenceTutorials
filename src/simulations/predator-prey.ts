@@ -67,6 +67,25 @@ export class PredatorPreySimulation extends BaseSimulationController {
   }
 
   getState(): SimulationState {
+    // Prey's true policy for its current state
+    const preyPolicy = this.prey.getCurrentPolicy();
+    const preyTrueProbs = this.gridWorld.policyToPositionGrid(
+      preyPolicy, this.prey.position
+    );
+
+    // Predator's learned model for the current state
+    const stateItems = this.lessonType === LessonType.LESSON_2
+      ? [this.prey]
+      : [this.prey, this.predator];
+    const stateKey = this.gridWorld.gridToString(stateItems);
+    const modelPolicy =
+      this.predator.preyModel.getMovementProbabilitiesForState(
+        stateKey
+      );
+    const predatorModelProbs = this.gridWorld.policyToPositionGrid(
+      modelPolicy, this.prey.position
+    );
+
     return {
       agents: [
         {
@@ -85,6 +104,8 @@ export class PredatorPreySimulation extends BaseSimulationController {
         size: this.gridWorld.size
       },
       predatorBelief: this.predator.preyBelief.map(row => [...row]),
+      preyTrueProbs,
+      predatorModelProbs,
       predatorVision: this.predator.perceive(false),
       lessonType: this.lessonType
     };

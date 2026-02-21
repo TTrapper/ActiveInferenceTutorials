@@ -84,6 +84,14 @@
           <option value="predator_prey_l3">Lesson 3: State Space Explosion</option>
         </select>
       </div>
+      <div class="config-row" id="heatmap-config">
+        <label>Heatmap:</label>
+        <div style="display: flex; gap: 12px;">
+          <label><input type="radio" name="heatmap" value="prey_policy" checked> Prey Policy</label>
+          <label><input type="radio" name="heatmap" value="predator_belief"> Predator Belief</label>
+          <label><input type="radio" name="heatmap" value="model_error"> Model Error</label>
+        </div>
+      </div>
       <div class="config-row" id="vision-range-config" style="display: none;">
         <label for="vision-range-slider">Predator Vision Range:</label>
         <div style="display: flex; align-items: center; gap: 10px;">

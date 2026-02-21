@@ -73,6 +73,29 @@ export class GridWorld implements Environment {
   }
 
   /**
+   * Convert a direction→probability policy into a 2D position grid.
+   * Each direction probability is placed at the cell the source would
+   * reach by moving in that direction.
+   */
+  policyToPositionGrid(
+    policy: Map<string, number>,
+    sourcePosition: Position
+  ): number[][] {
+    const grid = Array(this.size).fill(0).map(() =>
+      Array(this.size).fill(0)
+    );
+    for (const [dirKey, prob] of policy) {
+      const parts = dirKey.split(',').map(Number);
+      const target = this.normalizePosition([
+        sourcePosition[0] + parts[0],
+        sourcePosition[1] + parts[1]
+      ]);
+      grid[target[0]][target[1]] += prob;
+    }
+    return grid;
+  }
+
+  /**
    * Print current grid state out to a string.
    * Pass an array of renderables to control what is shown;
    * defaults to all agents.

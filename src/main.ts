@@ -1,4 +1,4 @@
-import { PixiRenderer } from './visualization/renderer';
+import { PixiRenderer, HeatmapMode } from './visualization/renderer';
 import { PredatorPreySimulation, LessonType } from './simulations/predator-prey';
 import { PreyOnlySimulation } from './simulations/prey-only';
 import { SimulationController } from './core/types';
@@ -36,6 +36,9 @@ function initialize() {
     document.getElementById('vision-range-slider') as HTMLInputElement;
   const visionRangeValue =
     document.getElementById('vision-range-value');
+  const heatmapRadios = document.querySelectorAll<HTMLInputElement>(
+    'input[name="heatmap"]'
+  );
 
   if (!canvasContainer) {
     console.error('Canvas container not found!');
@@ -120,6 +123,16 @@ function initialize() {
     // Toggle vision range slider visibility
     toggleVisionRangeSlider(simulationType);
 
+    // Set default heatmap mode per lesson
+    const defaultMode: HeatmapMode =
+      simulationType === SimulationType.PREY_ONLY
+        ? 'prey_policy'
+        : 'predator_belief';
+    renderer.setHeatmapMode(defaultMode);
+    for (const radio of heatmapRadios) {
+      radio.checked = radio.value === defaultMode;
+    }
+
     // Reset button states
     startButton.disabled = false;
     pauseButton.disabled = true;
@@ -146,6 +159,16 @@ function initialize() {
 
       if (currentSimulation && 'setVisionRange' in currentSimulation) {
         (currentSimulation as any).setVisionRange(range);
+      }
+    });
+  }
+
+  // Set up heatmap radio buttons
+  for (const radio of heatmapRadios) {
+    radio.addEventListener('change', () => {
+      renderer.setHeatmapMode(radio.value as HeatmapMode);
+      if (currentSimulation) {
+        renderer.update(currentSimulation.getState());
       }
     });
   }
