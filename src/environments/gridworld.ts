@@ -1,4 +1,4 @@
-import { Agent, Environment, Position } from '../core/types';
+import { Agent, Environment, GridRenderable, Position } from '../core/types';
 
 /**
  * A 2D grid world environment where agents can move in 8 directions
@@ -70,5 +70,29 @@ export class GridWorld implements Environment {
    */
   clearAgents(): void {
     this.agents = [];
+  }
+
+  /**
+   * Print current grid state out to a string.
+   * Pass an array of renderables to control what is shown;
+   * defaults to all agents.
+   */
+  gridToString(items?: GridRenderable[]): string {
+    const renderables = items ?? this.agents;
+    let result = '';
+    for (let i = 0; i < this.size; i++) {
+      for (let j = 0; j < this.size; j++) {
+        let cell = '.';
+        for (const item of renderables) {
+          if (item.position[0] === j && item.position[1] === i) {
+            cell = item.asciiSymbol;
+            break;
+          }
+        }
+        result += cell;
+      }
+      result += '\n';
+    }
+    return result;
   }
 }

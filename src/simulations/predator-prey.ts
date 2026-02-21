@@ -81,14 +81,15 @@ import { BaseSimulationController } from '../core/simulation';
 import { SimulationState } from '../core/types';
 import { GridWorld } from '../environments/gridworld';
 import { PolicyPreyAgent, MovementPolicy } from '../agents/prey';
-import { ActiveInferencePredator } from '../agents/predator';
+import { ActiveInferencePredator, GenerativeModelType } from '../agents/predator';
 
 /**
  * Lesson types for the predator-prey simulation
  */
 export enum LessonType {
   LESSON_2 = 'lesson2', // Uniform belief distribution (no learning)
-  LESSON_3 = 'lesson3'  // Advanced Bayesian belief update (with learning)
+  LESSON_3 = 'lesson3', // Advanced Bayesian belief update (with learning)
+  LESSON_4 = 'lesson4'  // Bayesian world model (learns full grid states)
 }
 
 // Fixed grid size for the predator-prey simulation
@@ -115,16 +116,22 @@ export class PredatorPreySimulation extends BaseSimulationController {
     this.prey = new PolicyPreyAgent('prey1', [5, 5], gridWorld);
     gridWorld.addAgent(this.prey);
 
-    // Create and add predator with the appropriate model based on lesson
-    const useAdvancedModel = lessonType === LessonType.LESSON_3;
     this.predator = new ActiveInferencePredator(
       'predator1',
       [25, 25], // Position predator away from prey
       gridWorld,
-      useAdvancedModel
+      this.getPredatorModelType(lessonType)
     );
     this.predator.setTargetAgent(this.prey);
     gridWorld.addAgent(this.predator);
+  }
+ 
+  getPredatorModelType(lessonType: LessonType): GenerativeModelType {
+    switch (lessonType) {
+      case LessonType.LESSON_2: return GenerativeModelType.UNIFORM;
+      case LessonType.LESSON_3: return GenerativeModelType.BAYESIAN_PREY;
+      case LessonType.LESSON_4: return GenerativeModelType.BAYESIAN_WORLD;
+    }
   }
 
   /**
@@ -210,12 +217,11 @@ export class PredatorPreySimulation extends BaseSimulationController {
     this.prey = new PolicyPreyAgent('prey1', [5, 5], this.gridWorld);
 
     // Create and add predator with the appropriate model based on lesson
-    const useAdvancedModel = this.lessonType === LessonType.LESSON_3;
     this.predator = new ActiveInferencePredator(
       'predator1',
       [25, 25], // Position predator away from prey
       this.gridWorld,
-      useAdvancedModel
+      this.getPredatorModelType(this.lessonType)
     );
     this.predator.setTargetAgent(this.prey);
 
@@ -233,9 +239,9 @@ export class PredatorPreySimulation extends BaseSimulationController {
   setLesson(lessonType: LessonType): void {
     if (this.lessonType !== lessonType) {
       this.lessonType = lessonType;
-      // Update the predator's generative model based on the lesson
-      const useAdvancedModel = lessonType === LessonType.LESSON_3;
-      this.predator.setGenerativeModel(useAdvancedModel);
+      this.predator.setGenerativeModel(
+        this.gridWorld, this.getPredatorModelType(lessonType)
+      );
       this.reset();
     }
   }

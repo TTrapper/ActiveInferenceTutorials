@@ -9,7 +9,8 @@ import { SimulationController } from './core/types';
 enum SimulationType {
   STATE_TRANSITION = 'state_transition',
   PREDATOR_PREY_L2 = 'predator_prey_l2',
-  PREDATOR_PREY_L3 = 'predator_prey_l3'
+  PREDATOR_PREY_L3 = 'predator_prey_l3',
+  PREDATOR_PREY_L4 = 'predator_prey_l4'
 }
 
 /**
@@ -55,7 +56,12 @@ function initialize() {
     [SimulationType.PREDATOR_PREY_L3]:
       `Lesson 3: Predator-Prey with Advanced Belief Updating -
       The predator now uses a Bayesian approach to update its belief based on
-      observations and its learned model of the prey's movement patterns.`
+      observations and its learned model of the prey's movement patterns.`,
+    [SimulationType.PREDATOR_PREY_L4]:
+      `Lesson 4: Predator-Prey with World Model -
+      The predator uses a Bayesian world model that learns all possible gridworld
+      states, allowing it to model changes in prey movement based on position
+      of walls and food.`
   };
 
   /**
@@ -142,7 +148,8 @@ function initialize() {
   function togglePolicyEditor(simulationType: SimulationType) {
     if (policyEditor && policyEditor instanceof HTMLElement) {
       if (simulationType === SimulationType.PREDATOR_PREY_L2 ||
-          simulationType === SimulationType.PREDATOR_PREY_L3) {
+          simulationType === SimulationType.PREDATOR_PREY_L3 ||
+          simulationType === SimulationType.PREDATOR_PREY_L4) {
         policyEditor.style.display = 'flex';
         initializePolicyEditor();
       } else {
@@ -157,7 +164,8 @@ function initialize() {
   function toggleVisionRangeSlider(simulationType: SimulationType) {
     if (visionRangeConfig && visionRangeConfig instanceof HTMLElement) {
       if (simulationType === SimulationType.PREDATOR_PREY_L2 ||
-          simulationType === SimulationType.PREDATOR_PREY_L3) {
+          simulationType === SimulationType.PREDATOR_PREY_L3 ||
+          simulationType === SimulationType.PREDATOR_PREY_L4) {
         visionRangeConfig.style.display = 'flex';
       } else {
         visionRangeConfig.style.display = 'none';
@@ -184,6 +192,9 @@ function initialize() {
         break;
       case SimulationType.PREDATOR_PREY_L3:
         currentSimulation = new PredatorPreySimulation(LessonType.LESSON_3);
+        break;
+      case SimulationType.PREDATOR_PREY_L4:
+        currentSimulation = new PredatorPreySimulation(LessonType.LESSON_4);
         break;
     }
 

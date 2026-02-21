@@ -8,6 +8,14 @@
 export type Position = [number, number];
 
 /**
+ * Anything that can be rendered on the grid
+ */
+export interface GridRenderable {
+  position: Position;
+  asciiSymbol: string;
+}
+
+/**
  * Direction vectors for agent movement
  */
 export const DIRECTION_VECTORS = [
@@ -26,6 +34,7 @@ export const DIRECTION_VECTORS = [
  */
 export interface Agent {
   position: Position;
+  asciiSymbol: string;
   perceive(): void;
   act(): void;
 }

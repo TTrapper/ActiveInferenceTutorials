@@ -13,6 +13,7 @@ export type MovementPolicy = number[][];
 export class PolicyPreyAgent implements Agent {
   id: string;
   position: Position;
+  asciiSymbol = 'r';
   environment: GridWorld;
   movementPolicy: MovementPolicy = [];
 

@@ -8,6 +8,7 @@ import { GridWorld } from '../environments/gridworld';
 export class StateMachineAgent implements Agent {
   id: string;
   position: Position; // We use position as a state index
+  asciiSymbol = 'S';
   environment: GridWorld; // Each location on the grid represents a possile state
   transitionMatrix: number[][]; // Probability matrix for state transitions
 

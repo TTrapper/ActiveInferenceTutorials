@@ -8,7 +8,7 @@ export interface PreyGenerativeModel {
   /**
    * Update the model based on observed prey position
    */
-  update(preyPosition: Position | null): void;
+  update(prey: Agent | null): void;
 
   /**
    * Get movement probability distribution
@@ -28,7 +28,7 @@ export interface PreyGenerativeModel {
 export class UniformPreyModel implements PreyGenerativeModel {
   constructor(private environment: GridWorld) {}
 
-  update(preyPosition: Position | null): void {
+  update(prey: Agent | null): void {
     // No learning in the uniform model
   }
 
@@ -91,20 +91,20 @@ export class BayesianPreyModel implements PreyGenerativeModel {
     this.reset();
   }
 
-  update(preyPosition: Position | null): void {
+  update(prey: Agent | null): void {
     // If the prey wasn't seen, set lastPreyPosition to null because we only update
     // on consequtive moves.
     // TODO We should apply a soft update when lastPreyPosition = null, based on belief about where the prey *could* have come from
-    if (preyPosition === null) {
+    if (prey === null) {
       this.lastPreyPosition = null;
       return;
     }
     if (this.lastPreyPosition !== null) {
-      const directionMoved = this.computeDirectionMoved(this.lastPreyPosition, preyPosition);
+      const directionMoved = this.computeDirectionMoved(this.lastPreyPosition, prey.position);
       const currentCount = this.movementCounts.get(directionMoved.toString()) ?? 0;
       this.movementCounts.set(directionMoved.toString(), currentCount + 1);
     }
-    this.lastPreyPosition = [...preyPosition];
+    this.lastPreyPosition = [...prey.position];
   }
 
   getMovementProbabilities(): Map<string, number> {
@@ -147,19 +147,114 @@ export class BayesianPreyModel implements PreyGenerativeModel {
   }
 }
 
+
+/**
+ * Bayesian prey model that learns world states (Lesson 4)
+ *
+ * Like Lesson 3 except instead of modeling relative movements of Prey,
+ * now we model each possible position of the prey independently. This will results
+ * in a larger lookup table and much slower learning, but doesn't assume the prey
+ * behaves the same in all situations. Opens up the ability to add more state to the
+ * world, like the predator's own position, walls, food, etc.
+ *
+ */
+export class BayesianWorldModel implements PreyGenerativeModel {
+  private lastState: string | null = null;
+  private lastPreyPosition: Position | null = null;
+  private transitionCounts: Map<string, Map<string, number>> = new Map();
+
+  constructor(private environment: GridWorld) {
+    this.reset();
+  }
+
+  update(prey: Agent | null): void {
+    if (prey === null) {
+      this.lastPreyPosition = null;
+      return;
+    }
+    const currentState = this.environment.gridToString([prey]);
+    if (this.lastState !== null && this.lastPreyPosition !== null) {
+      const directionMoved = this.computeDirectionMoved(this.lastPreyPosition, prey.position);
+      const dirKey = directionMoved.toString();
+      if (!this.transitionCounts.has(this.lastState)) {
+        this.transitionCounts.set(this.lastState, new Map());
+      }
+      const dirCounts = this.transitionCounts.get(this.lastState)!;
+      dirCounts.set(dirKey, (dirCounts.get(dirKey) ?? 0) + 1);
+    }
+    this.lastState = currentState;
+    this.lastPreyPosition = [...prey.position];
+  }
+
+  getMovementProbabilities(): Map<string, number> {
+    const dirCounts = this.lastState !== null
+      ? this.transitionCounts.get(this.lastState)
+      : undefined;
+
+    // No data for this state yet — return empty map
+    if (!dirCounts || dirCounts.size === 0) {
+      return new Map();
+    }
+
+    const total = Array.from(dirCounts.values())
+      .reduce((sum, count) => sum + count, 0);
+
+    const probs = new Map<string, number>();
+    dirCounts.forEach((count, direction) => {
+      probs.set(direction, count / total);
+    });
+    return probs;
+  }
+
+  reset(): void {
+    this.transitionCounts.clear();
+    this.lastState = null;
+    this.lastPreyPosition = null;
+  }
+
+  private computeDirectionMoved(last: Position, current: Position): Position {
+    const gridSize = this.environment.size;
+    const dx = this.computeWrappedDifference(last[0], current[0], gridSize);
+    const dy = this.computeWrappedDifference(last[1], current[1], gridSize);
+    return [dx, dy];
+  }
+
+  private computeWrappedDifference(a: number, b: number, size: number): number {
+    let diff = b - a;
+    // Adjust if the difference is larger than half the grid size (wrap-around)
+    if (diff > size / 2) {
+      diff -= size;
+    } else if (diff < -size / 2) {
+      diff += size;
+    }
+    return diff;
+  }
+
+}
+
 /**
  * A predator agent that uses active inference principles to hunt prey
  */
+/**
+ * Available generative model types for the predator
+ */
+export enum GenerativeModelType {
+  UNIFORM = 'uniform',
+  BAYESIAN_PREY = 'bayesian_prey',
+  BAYESIAN_WORLD = 'bayesian_world'
+}
+
 export class ActiveInferencePredator implements Agent {
   id: string;
   position: Position;
+  asciiSymbol = 'P';
   environment: GridWorld;
   preyBelief: number[][];
-  preyModel: PreyGenerativeModel;
+  preyModel!: PreyGenerativeModel;
   targetAgent: Agent | null = null;
   visionRange: number;
 
-  constructor(id: string, position: Position, environment: GridWorld, useAdvancedModel: boolean = false) {
+  constructor(id: string, position: Position, environment: GridWorld, modelType: GenerativeModelType = GenerativeModelType.UNIFORM) {
     this.id = id;
     this.position = [...position];
     this.environment = environment;
@@ -170,10 +265,7 @@ export class ActiveInferencePredator implements Agent {
       Array(environment.size).fill(1 / (environment.size * environment.size))
     );
 
-    // Create the appropriate generative model based on the lesson
-    this.preyModel = useAdvancedModel
-      ? new BayesianPreyModel(environment)
-      : new UniformPreyModel(environment);
+    this.setGenerativeModel(environment, modelType);
   }
 
   /**
@@ -186,10 +278,15 @@ export class ActiveInferencePredator implements Agent {
   /**
    * Change the predator's generative model
    */
-  setGenerativeModel(useAdvancedModel: boolean): void {
-    this.preyModel = useAdvancedModel
-      ? new BayesianPreyModel(this.environment)
-      : new UniformPreyModel(this.environment);
+  setGenerativeModel(environment: GridWorld, modelType: GenerativeModelType = GenerativeModelType.UNIFORM): void {
+    switch (modelType) {
+      case GenerativeModelType.UNIFORM:
+        this.preyModel = new UniformPreyModel(environment); break;
+      case GenerativeModelType.BAYESIAN_PREY:
+        this.preyModel = new BayesianPreyModel(environment); break;
+      case GenerativeModelType.BAYESIAN_WORLD:
+        this.preyModel = new BayesianWorldModel(environment); break;
+    }
   }
 
   /**
@@ -248,9 +345,9 @@ export class ActiveInferencePredator implements Agent {
         this.preyBelief[i].fill(0);
       }
 
-      // Update the generative model with the observed prey position
+      // Update the generative model with the observed prey
       // FIXME preyModel needs to take into account the situation where we didn't see the prey in the last step
-      this.preyModel.update(preyPosition);
+      this.preyModel.update(this.targetAgent);
 
       // Get movement probabilities from the model
       const movementProbs = this.preyModel.getMovementProbabilities();
@@ -270,7 +367,7 @@ export class ActiveInferencePredator implements Agent {
        * NOTE this is a convolution over belief with the preyModel as the kernel
        */
 
-      this.preyModel.update(preyPosition);
+      this.preyModel.update(null);
       // Set the spots we just saw to zero, because we didn't see the prey there
       for (let position of perceivedPositions) {
         this.preyBelief[position[0]][position[1]] = 0.0
@@ -307,6 +404,7 @@ export class ActiveInferencePredator implements Agent {
   */
   sampleFromWeights<T>(options: T[], weights: number[]): T | null {
     const totalWeight = weights.reduce((sum, weight) => sum + weight, 0);
+    if (totalWeight === 0) return null;
     let threshold = Math.random() * totalWeight;
     for (let i = 0; i < options.length; i++) {
       threshold -= weights[i];
