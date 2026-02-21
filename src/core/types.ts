@@ -66,8 +66,6 @@ export interface SimulationState {
   };
   // For predator-prey simulation
   predatorBelief?: number[][];
-  // For state machine simulation
-  transitionMatrix?: number[][];
   // General properties
   lessonType?: string;
   [key: string]: any; // Any additional simulation state

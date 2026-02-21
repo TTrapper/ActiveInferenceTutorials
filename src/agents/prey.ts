@@ -35,6 +35,15 @@ export class PolicyPreyAgent implements Agent {
   }
 
   /**
+   * Update the items used for state key computation.
+   * Clears cached policies since the state space has changed.
+   */
+  setStateItems(items: GridRenderable[]): void {
+    this.stateItems = items;
+    this.statePolicies.clear();
+  }
+
+  /**
    * Get the current state key
    */
   private getStateKey(): string {

@@ -1,16 +1,15 @@
 import { PixiRenderer } from './visualization/renderer';
 import { PredatorPreySimulation, LessonType } from './simulations/predator-prey';
-import { StateTransitionSimulation } from './simulations/state_transition';
+import { PreyOnlySimulation } from './simulations/prey-only';
 import { SimulationController } from './core/types';
 
 /**
  * Available simulations/lessons
  */
 enum SimulationType {
-  STATE_TRANSITION = 'state_transition',
+  PREY_ONLY = 'prey_only',
   PREDATOR_PREY_L2 = 'predator_prey_l2',
-  PREDATOR_PREY_L3 = 'predator_prey_l3',
-  PREDATOR_PREY_L4 = 'predator_prey_l4'
+  PREDATOR_PREY_L3 = 'predator_prey_l3'
 }
 
 /**
@@ -19,15 +18,24 @@ enum SimulationType {
 function initialize() {
   // Get DOM elements
   const canvasContainer = document.getElementById('simulation-canvas');
-  const startButton = document.getElementById('start-button') as HTMLButtonElement;
-  const pauseButton = document.getElementById('pause-button') as HTMLButtonElement;
-  const stepButton = document.getElementById('step-button') as HTMLButtonElement;
-  const resetButton = document.getElementById('reset-button') as HTMLButtonElement;
-  const lessonSelector = document.getElementById('lesson-selector') as HTMLSelectElement;
-  const lessonDescription = document.getElementById('lesson-description');
-  const visionRangeConfig = document.getElementById('vision-range-config');
-  const visionRangeSlider = document.getElementById('vision-range-slider') as HTMLInputElement;
-  const visionRangeValue = document.getElementById('vision-range-value');
+  const startButton =
+    document.getElementById('start-button') as HTMLButtonElement;
+  const pauseButton =
+    document.getElementById('pause-button') as HTMLButtonElement;
+  const stepButton =
+    document.getElementById('step-button') as HTMLButtonElement;
+  const resetButton =
+    document.getElementById('reset-button') as HTMLButtonElement;
+  const lessonSelector =
+    document.getElementById('lesson-selector') as HTMLSelectElement;
+  const lessonDescription =
+    document.getElementById('lesson-description');
+  const visionRangeConfig =
+    document.getElementById('vision-range-config');
+  const visionRangeSlider =
+    document.getElementById('vision-range-slider') as HTMLInputElement;
+  const visionRangeValue =
+    document.getElementById('vision-range-value');
 
   if (!canvasContainer) {
     console.error('Canvas container not found!');
@@ -42,23 +50,22 @@ function initialize() {
 
   // Lesson descriptions
   const lessonDescriptions = {
-    [SimulationType.STATE_TRANSITION]:
-      `Lesson 1: Theoretical Foundations -
-      Basic state transition model demonstrating how a generative model
-      can predict future states based on transition probabilities.`,
+    [SimulationType.PREY_ONLY]:
+      `Lesson 1: State Transitions \u2014
+      A prey agent moves on the grid with per-position transition
+      policies. Watch how each grid cell produces a different movement
+      distribution \u2014 this is the generative model the predator will
+      need to learn.`,
     [SimulationType.PREDATOR_PREY_L2]:
-      `Lesson 2: Predator-Prey Simulation -
-      A predator uses active inference to locate and catch prey
-      by updating its beliefs based on observations with a uniform generative model.`,
+      `Lesson 2: Learning Transitions \u2014
+      A predator is introduced and learns the prey\u2019s per-position
+      movement patterns using a Bayesian world model. The state key
+      is the prey\u2019s position only (1,024 states on a 32\u00d732 grid).`,
     [SimulationType.PREDATOR_PREY_L3]:
-      `Lesson 3: Predator-Prey with Advanced Belief Updating -
-      The predator now uses a Bayesian approach to update its belief based on
-      observations and its learned model of the prey's movement patterns.`,
-    [SimulationType.PREDATOR_PREY_L4]:
-      `Lesson 4: Predator-Prey with World Model -
-      The predator uses a Bayesian world model that learns all possible gridworld
-      states, allowing it to model changes in prey movement based on position
-      of walls and food.`
+      `Lesson 3: State Space Explosion \u2014
+      The predator\u2019s own position is added to the state key, giving
+      1,024\u00d71,024 = 1,048,576 possible states. Learning is visibly
+      slower \u2014 this demonstrates the curse of dimensionality.`
   };
 
   /**
@@ -67,8 +74,7 @@ function initialize() {
   function toggleVisionRangeSlider(simulationType: SimulationType) {
     if (visionRangeConfig && visionRangeConfig instanceof HTMLElement) {
       if (simulationType === SimulationType.PREDATOR_PREY_L2 ||
-          simulationType === SimulationType.PREDATOR_PREY_L3 ||
-          simulationType === SimulationType.PREDATOR_PREY_L4) {
+          simulationType === SimulationType.PREDATOR_PREY_L3) {
         visionRangeConfig.style.display = 'flex';
       } else {
         visionRangeConfig.style.display = 'none';
@@ -87,23 +93,23 @@ function initialize() {
 
     // Create new simulation based on type
     switch (simulationType) {
-      case SimulationType.STATE_TRANSITION:
-        currentSimulation = new StateTransitionSimulation();
+      case SimulationType.PREY_ONLY:
+        currentSimulation = new PreyOnlySimulation();
         break;
       case SimulationType.PREDATOR_PREY_L2:
-        currentSimulation = new PredatorPreySimulation(LessonType.LESSON_2);
+        currentSimulation =
+          new PredatorPreySimulation(LessonType.LESSON_2);
         break;
       case SimulationType.PREDATOR_PREY_L3:
-        currentSimulation = new PredatorPreySimulation(LessonType.LESSON_3);
-        break;
-      case SimulationType.PREDATOR_PREY_L4:
-        currentSimulation = new PredatorPreySimulation(LessonType.LESSON_4);
+        currentSimulation =
+          new PredatorPreySimulation(LessonType.LESSON_3);
         break;
     }
 
     // Update description
     if (lessonDescription) {
-      lessonDescription.textContent = lessonDescriptions[simulationType];
+      lessonDescription.textContent =
+        lessonDescriptions[simulationType];
     }
 
     // Connect simulation to renderer
@@ -137,8 +143,7 @@ function initialize() {
     visionRangeSlider.addEventListener('input', () => {
       const range = parseInt(visionRangeSlider.value);
       visionRangeValue.textContent = range.toString();
-      
-      // Update predator vision range if we have a predator-prey simulation
+
       if (currentSimulation && 'setVisionRange' in currentSimulation) {
         (currentSimulation as any).setVisionRange(range);
       }
@@ -148,7 +153,7 @@ function initialize() {
   // Set up event listeners for simulation controls
   startButton.addEventListener('click', () => {
     if (currentSimulation) {
-      currentSimulation.start(300); // Update every 300ms
+      currentSimulation.start(300);
       startButton.disabled = true;
       pauseButton.disabled = false;
       stepButton.disabled = true;
@@ -183,7 +188,7 @@ function initialize() {
   // Initialize with the first lesson
   const initialLesson = lessonSelector ?
     (lessonSelector.value as SimulationType) :
-    SimulationType.STATE_TRANSITION;
+    SimulationType.PREY_ONLY;
 
   switchSimulation(initialLesson);
 
