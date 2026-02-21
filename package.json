@@ -2,11 +2,11 @@
   "name": "active-inference-tutorials",
   "version": "0.1.0",
   "description": "Interactive tutorials demonstrating active inference concepts",
-  "source": "index.html",
   "scripts": {
-    "start": "parcel index.html --no-cache",
-    "build": "parcel build index.html",
-    "clean": "rm -rf dist .parcel-cache"
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "clean": "rm -rf dist"
   },
   "author": "",
   "license": "MIT",
@@ -14,7 +14,7 @@
     "pixi.js": "^7.3.2"
   },
   "devDependencies": {
-    "parcel": "^2.10.3",
-    "typescript": "^5.3.2"
+    "typescript": "^5.3.2",
+    "vite": "7.3.1"
   }
 }
