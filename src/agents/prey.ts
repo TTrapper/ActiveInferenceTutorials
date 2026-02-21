@@ -1,147 +1,107 @@
-import { Agent, Position } from '../core/types';
+import { Agent, GridRenderable, Position, DIRECTION_VECTORS } from '../core/types';
 import { GridWorld } from '../environments/gridworld';
 
 /**
- * Movement policy type for the prey agent
- * A 5x5 grid of probabilities centered on the prey
+ * Movement policy type for the prey agent.
+ * Maps direction vector string (e.g. "1,0") to probability.
  */
-export type MovementPolicy = number[][];
+export type MovementPolicy = Map<string, number>;
 
 /**
- * A prey agent with configurable movement policy
+ * A prey agent whose movement probabilities depend on the current grid state.
+ * Each unique state (as returned by gridToString) has its own randomly generated
+ * movement policy over the 8 direction vectors.
+ *
+ * The set of GridRenderables used to build the state key is configurable,
+ * so later lessons can include predator position, walls, etc.
  */
 export class PolicyPreyAgent implements Agent {
   id: string;
   position: Position;
   asciiSymbol = 'r';
   environment: GridWorld;
-  movementPolicy: MovementPolicy = [];
 
-  /**
-   * Create a new prey agent with a configurable movement policy
-   */
+  /** Items included when computing the state key (defaults to just this agent) */
+  stateItems: GridRenderable[];
+
+  /** Per-state movement policies, lazily generated on first visit */
+  private statePolicies: Map<string, MovementPolicy> = new Map();
+
   constructor(id: string, position: Position, environment: GridWorld) {
     this.id = id;
     this.position = [...position];
     this.environment = environment;
-
-    // Initialize with a uniform movement policy (5x5 grid)
-    this.initializeUniformPolicy();
+    this.stateItems = [this];
   }
 
   /**
-   * Reset movement policy to uniform distribution
+   * Get the current state key
    */
-  initializeUniformPolicy(): void {
-    // Create a 5x5 grid with uniform probabilities
-    this.movementPolicy = Array(5).fill(0).map(() =>
-      Array(5).fill(1)
-    );
-    this.normalizePolicy();
+  private getStateKey(): string {
+    return this.environment.gridToString(this.stateItems);
   }
 
   /**
-   * Increment a specific cell in the movement policy
-   * @param x X coordinate in policy grid (0-4)
-   * @param y Y coordinate in policy grid (0-4)
+   * Get the movement policy for a state, generating one if it doesn't exist yet
    */
-  incrementPolicyCell(x: number, y: number): void {
-    if (x >= 0 && x < 5 && y >= 0 && y < 5) {
-      this.movementPolicy[y][x] += 0.1;
-      this.normalizePolicy();
+  getPolicyForState(stateKey: string): MovementPolicy {
+    if (!this.statePolicies.has(stateKey)) {
+      this.statePolicies.set(stateKey, this.generateRandomPolicy());
     }
+    return this.statePolicies.get(stateKey)!;
   }
 
   /**
-   * Ensure the movement policy is normalized (sums to 1)
+   * Get the movement policy for the current state (for UI display)
    */
-  normalizePolicy(): void {
+  getCurrentPolicy(): MovementPolicy {
+    return this.getPolicyForState(this.getStateKey());
+  }
+
+  /**
+   * Generate a random normalized movement policy over the 8 directions
+   */
+  private generateRandomPolicy(): MovementPolicy {
+    const policy: MovementPolicy = new Map();
     let sum = 0;
-
-    // Calculate sum
-    for (let y = 0; y < 5; y++) {
-      for (let x = 0; x < 5; x++) {
-        sum += this.movementPolicy[y][x];
-      }
+    for (const dir of DIRECTION_VECTORS) {
+      const weight = Math.random();
+      policy.set(dir.toString(), weight);
+      sum += weight;
     }
-
-    // Normalize if sum is greater than 0
-    if (sum > 0) {
-      for (let y = 0; y < 5; y++) {
-        for (let x = 0; x < 5; x++) {
-          this.movementPolicy[y][x] /= sum;
-        }
-      }
-    } else {
-      // If all probabilities are 0, set to uniform
-      this.initializeUniformPolicy();
+    // Normalize
+    for (const [key, val] of policy) {
+      policy.set(key, val / sum);
     }
+    return policy;
   }
 
-  /**
-   * Get the movement vector from policy coordinates
-   * Converts from policy grid (0-4) to movement (-2 to +2)
-   */
-  private getMovementFromPolicyCoord(x: number, y: number): Position {
-    return [x - 2, y - 2]; // Center is (2,2) which maps to (0,0) movement
-  }
-
-  /**
-   * Perception is a no-op for policy prey
-   */
   perceive(): void {
     // Policy prey doesn't need perception
   }
 
-  /**
-   * Move the prey according to the configured policy
-   */
   act(): void {
-    // Choose a move based on policy probabilities
-    const flattenedPolicy: { prob: number, x: number, y: number }[] = [];
+    const policy = this.getPolicyForState(this.getStateKey());
 
-    // Flatten the 2D policy into a 1D array with coordinates
-    for (let y = 0; y < 5; y++) {
-      for (let x = 0; x < 5; x++) {
-        if (this.movementPolicy[y][x] > 0) {
-          flattenedPolicy.push({
-            prob: this.movementPolicy[y][x],
-            x,
-            y
-          });
-        }
-      }
-    }
-
-    // Randomly select a move based on probabilities
+    // Sample a direction from the policy
     const random = Math.random();
-    let cumulativeProbability = 0;
-    let selectedMove: Position = [0, 0]; // Default no movement
+    let cumulative = 0;
+    let selectedMove: Position = [0, 0];
 
-    for (const entry of flattenedPolicy) {
-      cumulativeProbability += entry.prob;
-      if (random <= cumulativeProbability) {
-        selectedMove = this.getMovementFromPolicyCoord(entry.x, entry.y);
+    for (const [dirKey, prob] of policy) {
+      cumulative += prob;
+      if (random <= cumulative) {
+        const parts = dirKey.split(',').map(Number);
+        selectedMove = [parts[0], parts[1]];
         break;
       }
     }
 
-    // Calculate new position
     const newPosition: Position = [
       this.position[0] + selectedMove[0],
       this.position[1] + selectedMove[1]
     ];
 
-    // Apply the move - normalize will keep it within boundaries
     this.position = this.environment.normalizePosition(newPosition);
-  }
-}
-
-/**
- * Legacy RandomPreyAgent for backward compatibility
- */
-export class RandomPreyAgent extends PolicyPreyAgent {
-  constructor(id: string, position: Position, environment: GridWorld) {
-    super(id, position, environment);
   }
 }

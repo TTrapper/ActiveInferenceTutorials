@@ -25,9 +25,6 @@ function initialize() {
   const resetButton = document.getElementById('reset-button') as HTMLButtonElement;
   const lessonSelector = document.getElementById('lesson-selector') as HTMLSelectElement;
   const lessonDescription = document.getElementById('lesson-description');
-  const policyEditor = document.getElementById('policy-editor');
-  const policyGrid = document.getElementById('policy-grid');
-  const resetPolicyButton = document.getElementById('reset-policy-button') as HTMLButtonElement;
   const visionRangeConfig = document.getElementById('vision-range-config');
   const visionRangeSlider = document.getElementById('vision-range-slider') as HTMLInputElement;
   const visionRangeValue = document.getElementById('vision-range-value');
@@ -63,100 +60,6 @@ function initialize() {
       states, allowing it to model changes in prey movement based on position
       of walls and food.`
   };
-
-  /**
-   * Initialize the policy editor
-   */
-  function initializePolicyEditor() {
-    if (!policyGrid) return;
-
-    // Clear existing grid
-    policyGrid.innerHTML = '';
-
-    // Create a 5x5 grid for the policy editor
-    for (let x = 0; x < 5; x++) {
-      for (let y = 0; y < 5; y++) {
-        const cell = document.createElement('div');
-        cell.className = 'policy-cell';
-        cell.dataset.x = x.toString();
-        cell.dataset.y = y.toString();
-
-        // Center cell (2,2) represents the prey's current position
-        if (x === 2 && y === 2) {
-          cell.className += ' prey-cell';
-          cell.innerHTML = '🐁'; // Prey icon
-        } else {
-          // Add click event to update policy
-          cell.addEventListener('click', () => {
-            if (currentSimulation && 'updatePreyPolicy' in currentSimulation) {
-              (currentSimulation as any).updatePreyPolicy(x, y);
-            }
-          });
-
-          // Add value span
-          const valueSpan = document.createElement('span');
-          valueSpan.className = 'policy-value';
-          valueSpan.textContent = '0.00';
-          cell.appendChild(valueSpan);
-        }
-
-        policyGrid.appendChild(cell);
-      }
-    }
-
-    // Set up reset policy button
-    if (resetPolicyButton) {
-      resetPolicyButton.addEventListener('click', () => {
-        if (currentSimulation && 'resetPreyPolicy' in currentSimulation) {
-          (currentSimulation as any).resetPreyPolicy();
-        }
-      });
-    }
-  }
-
-  /**
-   * Update the policy editor with current policy values
-   */
-  function updatePolicyEditor(policy: number[][]) {
-    if (!policyGrid) return;
-
-    // Update each cell's value
-    for (let y = 0; y < 5; y++) {
-      for (let x = 0; x < 5; x++) {
-        // Skip the center cell (prey position)
-        if (x === 2 && y === 2) continue;
-
-        const cell = policyGrid.querySelector(`[data-x="${x}"][data-y="${y}"]`);
-        if (cell) {
-          const valueSpan = cell.querySelector('.policy-value');
-          if (valueSpan) {
-            const probability = policy[y][x];
-            valueSpan.textContent = probability.toFixed(2);
-
-            // Update cell background color based on probability
-            const intensity = Math.min(255, Math.round(probability * 500));
-            cell.style.backgroundColor = `rgba(0, ${intensity}, 0, 0.2)`;
-          }
-        }
-      }
-    }
-  }
-
-  /**
-   * Show or hide the policy editor based on the simulation type
-   */
-  function togglePolicyEditor(simulationType: SimulationType) {
-    if (policyEditor && policyEditor instanceof HTMLElement) {
-      if (simulationType === SimulationType.PREDATOR_PREY_L2 ||
-          simulationType === SimulationType.PREDATOR_PREY_L3 ||
-          simulationType === SimulationType.PREDATOR_PREY_L4) {
-        policyEditor.style.display = 'flex';
-        initializePolicyEditor();
-      } else {
-        policyEditor.style.display = 'none';
-      }
-    }
-  }
 
   /**
    * Show or hide the vision range slider based on the simulation type
@@ -206,15 +109,7 @@ function initialize() {
     // Connect simulation to renderer
     currentSimulation.addStateChangeListener((state) => {
       renderer.update(state);
-
-      // Update policy editor if available
-      if (state.preyMovementPolicy) {
-        updatePolicyEditor(state.preyMovementPolicy);
-      }
     });
-
-    // Toggle policy editor visibility
-    togglePolicyEditor(simulationType);
 
     // Toggle vision range slider visibility
     toggleVisionRangeSlider(simulationType);

@@ -31,78 +31,6 @@
     #simulation-canvas {
       border: 1px solid #ccc;
     }
-    #policy-editor {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      border: 1px solid #ccc;
-      padding: 15px;
-      background-color: #f9f9f9;
-    }
-    .policy-editor-title {
-      font-weight: bold;
-      margin-bottom: 10px;
-    }
-    .policy-grid {
-      display: grid;
-      grid-template-columns: repeat(5, 60px);
-      grid-template-rows: repeat(5, 60px);
-      gap: 2px;
-    }
-    .policy-cell {
-      width: 60px;
-      height: 60px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      border: 1px solid #ddd;
-      cursor: pointer;
-      transition: background-color 0.2s;
-      position: relative;
-    }
-    .policy-cell:hover {
-      background-color: #e9ffe9;
-    }
-    .policy-cell.prey-cell {
-      background-color: #ffaaaa;
-      cursor: default;
-    }
-    .policy-value {
-      font-size: 12px;
-      color: #333;
-    }
-    .policy-editor-controls {
-      margin-top: 15px;
-      display: flex;
-      gap: 10px;
-    }
-    .tooltip {
-      position: relative;
-      display: inline-block;
-      margin-left: 5px;
-      cursor: help;
-    }
-    .tooltip .tooltiptext {
-      visibility: hidden;
-      width: 250px;
-      background-color: #555;
-      color: #fff;
-      text-align: center;
-      border-radius: 6px;
-      padding: 10px;
-      position: absolute;
-      z-index: 1;
-      bottom: 125%;
-      left: 50%;
-      margin-left: -125px;
-      opacity: 0;
-      transition: opacity 0.3s;
-      font-size: 14px;
-    }
-    .tooltip:hover .tooltiptext {
-      visibility: visible;
-      opacity: 1;
-    }
     button {
       padding: 8px 16px;
       background-color: #4CAF50;
@@ -173,24 +101,6 @@
     <div class="simulation-container">
       <div id="simulation-canvas"></div>
 
-      <div id="policy-editor">
-        <div class="policy-editor-title">
-          Prey Movement Policy Editor
-          <div class="tooltip">?
-            <span class="tooltiptext">
-              This grid shows the prey's movement probabilities. The center cell represents the prey's current position.
-              Click on a cell to increase the probability of the prey moving in that direction. The policy is automatically
-              normalized so all probabilities sum to 1.
-            </span>
-          </div>
-        </div>
-        <div class="policy-grid" id="policy-grid">
-          <!-- Policy grid cells will be added dynamically -->
-        </div>
-        <div class="policy-editor-controls">
-          <button id="reset-policy-button">Reset Policy</button>
-        </div>
-      </div>
     </div>
 
     <div class="controls">

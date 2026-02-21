@@ -80,7 +80,7 @@
 import { BaseSimulationController } from '../core/simulation';
 import { SimulationState } from '../core/types';
 import { GridWorld } from '../environments/gridworld';
-import { PolicyPreyAgent, MovementPolicy } from '../agents/prey';
+import { PolicyPreyAgent } from '../agents/prey';
 import { ActiveInferencePredator, GenerativeModelType } from '../agents/predator';
 
 /**
@@ -103,7 +103,6 @@ export class PredatorPreySimulation extends BaseSimulationController {
   prey: PolicyPreyAgent;
   gridWorld: GridWorld;
   lessonType: LessonType;
-  policyEditorActive: boolean = false;
 
   constructor(lessonType: LessonType = LessonType.LESSON_2) {
     // Create the grid world environment with fixed size
@@ -159,43 +158,9 @@ export class PredatorPreySimulation extends BaseSimulationController {
       predatorBelief: this.predator.preyBelief.map(row => [...row]),
       // Add the positions that the predator can see
       predatorVision: this.predator.perceive(false),
-      // Add prey movement policy for policy editor
-      preyMovementPolicy: this.prey.movementPolicy.map(row => [...row]),
       // Add lesson type for UI
-      lessonType: this.lessonType,
-      // Add policy editor active state
-      policyEditorActive: this.policyEditorActive
+      lessonType: this.lessonType
     };
-  }
-
-  /**
-   * Update the prey's movement policy
-   * @param x X coordinate in policy grid (0-4)
-   * @param y Y coordinate in policy grid (0-4)
-   */
-  updatePreyPolicy(x: number, y: number): void {
-    this.prey.incrementPolicyCell(x, y);
-    this.notifyStateChange();
-  }
-
-  /**
-   * Reset prey's movement policy to uniform
-   */
-  resetPreyPolicy(): void {
-    this.prey.initializeUniformPolicy();
-    this.notifyStateChange();
-  }
-
-  /**
-   * Toggle the policy editor active state
-   */
-  togglePolicyEditor(active?: boolean): void {
-    if (active !== undefined) {
-      this.policyEditorActive = active;
-    } else {
-      this.policyEditorActive = !this.policyEditorActive;
-    }
-    this.notifyStateChange();
   }
 
   /**
