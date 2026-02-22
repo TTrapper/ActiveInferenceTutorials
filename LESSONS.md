@@ -16,12 +16,12 @@ concepts; later lessons remove that scaffolding entirely.
 **Concept:** A generative model is a set of rules that define how states
 evolve over time.
 
-**Setup:** A single prey agent moves on a 32×32 grid. Each grid cell has its
-own randomly generated movement policy (a probability distribution over 8
-directions). No predator.
+**Setup:** A single prey agent moves on a 32×32 grid. It follows a fixed
+stochastic policy: it is biased to move away from the center of the grid.
 
 **What the student sees:** The prey's behavior changes depending on where it
-is. The heatmap shows the true transition probabilities from the current cell.
+is (e.g., it hugs the edges). The heatmap shows the true transition
+probabilities from the current cell, which always point away from the center.
 
 **Key takeaway:** State-dependent transition models are the building block of
 everything that follows. The prey's policy *is* the generative model that the
@@ -34,38 +34,38 @@ predator will need to learn.
 **Concept:** An agent can learn another agent's generative model by observing
 state transitions and counting.
 
-**Setup:** A predator is introduced. It uses a `BayesianWorldModel` — a
-Dirichlet-categorical model that maintains a table of direction counts per
-state. The state key is the prey's position only (1,024 possible states).
-The predator still has hardcoded "move toward believed prey location"
-behavior.
+**Setup:** A predator is introduced. The prey's behavior changes: it now moves
+stochastically away from the *predator's* current position. The predator
+uses a `BayesianWorldModel` where the state key is the prey's position only
+(1,024 states).
 
-**What the student sees:** The predator's belief heatmap converges toward the
-prey's true policy over time. The model error heatmap shrinks as the predator
-gathers more observations.
+**What the student sees:** The predator's belief heatmap converges over time,
+but it is "blurry" because the predator is ignoring its own position—the
+very thing the prey is reacting to. The predator learns an average of how
+the prey moves at each location.
 
-**Key takeaway:** Bayesian updating works — given enough observations, the
-predator's model matches reality. But the state key only encodes the prey's
-position, so the model assumes the prey behaves the same regardless of where
-the predator is.
+**Key takeaway:** Bayesian updating works, but if your model ignores key
+variables (like the predator's own position), the learned model will be an
+inaccurate "average" of reality.
 
 ---
 
 ## L3: State Space Explosion (implemented)
 
-**Concept:** Adding dimensions to the state key causes combinatorial explosion
-in tabular models.
+**Concept:** Adding dimensions to the state key allows for more accurate
+models but causes combinatorial explosion in tabular models.
 
-**Setup:** The predator's position is added to the state key for both the
-prey's behavior and the predator's model. State space goes from 32² = 1,024
-to 32⁴ = 1,048,576 possible states.
+**Setup:** The predator's position is added to the state key for its model.
+State space goes from 32² = 1,024 to 32⁴ = 1,048,576 possible states.
 
-**What the student sees:** Learning is visibly slower. The model error stays
-high for much longer because most state combinations are never visited. The
-predator struggles to catch the prey.
+**What the student sees:** The predator's belief heatmap is much more precise
+(it correctly predicts the prey will move away from its current spot), but
+learning is visibly slower. Most state combinations are never visited, so
+the model stays "cold" for much longer.
 
-**Key takeaway:** Tabular models don't scale. We need a way to generalize
-across similar states instead of memorizing each one individually.
+**Key takeaway:** Tabular models are precise but don't scale. We need a way
+to generalize across similar states instead of memorizing each one
+individually.
 
 ---
 

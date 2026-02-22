@@ -50,6 +50,7 @@ export class PredatorPreySimulation extends BaseSimulationController {
       [] // placeholder — configured below
     );
     this.predator.setTargetAgent(this.prey);
+    this.prey.setTargetToAvoid(this.predator);
     gridWorld.addAgent(this.predator);
 
     // Now configure stateItems for both agents
@@ -159,6 +160,7 @@ export class PredatorPreySimulation extends BaseSimulationController {
       []
     );
     this.predator.setTargetAgent(this.prey);
+    this.prey.setTargetToAvoid(this.predator);
 
     this.gridWorld.clearAgents();
     this.gridWorld.addAgent(this.prey);
