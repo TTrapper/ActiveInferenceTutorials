@@ -138,9 +138,9 @@ export class PixiRenderer {
       }
 
       sprite.x =
-        agent.position[1] * this.cellSize + this.cellSize / 2;
-      sprite.y =
         agent.position[0] * this.cellSize + this.cellSize / 2;
+      sprite.y =
+        agent.position[1] * this.cellSize + this.cellSize / 2;
     }
 
     const currentAgentIds = new Set(state.agents.map(a => a.id));
@@ -171,8 +171,8 @@ export class PixiRenderer {
           const alpha = (val / maxVal) * 0.7;
           this.beliefHeatmap.beginFill(color, alpha);
           this.beliefHeatmap.drawRect(
-            j * this.cellSize,
             i * this.cellSize,
+            j * this.cellSize,
             this.cellSize,
             this.cellSize
           );
@@ -211,7 +211,7 @@ export class PixiRenderer {
 
     for (let y = 0; y < this.gridSize; y++) {
       for (let x = 0; x < this.gridSize; x++) {
-        if (!visibleCells.has(`${y},${x}`)) {
+        if (!visibleCells.has(`${x},${y}`)) {
           this.visionHeatmap.beginFill(0x000000, alpha);
           this.visionHeatmap.drawRect(
             x * this.cellSize,

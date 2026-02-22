@@ -2,7 +2,11 @@ import { BaseSimulationController } from '../core/simulation';
 import { SimulationState } from '../core/types';
 import { GridWorld } from '../environments/gridworld';
 import { PolicyPreyAgent } from '../agents/prey';
-import { ActiveInferencePredator } from '../agents/predator';
+import {
+  ActiveInferencePredator,
+  BayesianWorldModel
+} from '../agents/predator';
+import { TransformerWorldModel } from '../agents/transformer-model';
 
 /**
  * Lesson types for the predator-prey simulation
@@ -11,7 +15,9 @@ export enum LessonType {
   /** Predator learns prey's per-position transitions (state = prey only) */
   LESSON_2 = 'lesson2',
   /** Joint state: predator position added to state key (state explosion) */
-  LESSON_3 = 'lesson3'
+  LESSON_3 = 'lesson3',
+  /** Transformer world model replaces tabular model */
+  LESSON_4 = 'lesson4'
 }
 
 // Fixed grid size for the predator-prey simulation
@@ -54,15 +60,26 @@ export class PredatorPreySimulation extends BaseSimulationController {
    * Set stateItems on prey and predator model based on current lesson
    */
   private configureStateItems(): void {
-    if (this.lessonType === LessonType.LESSON_2) {
-      // Predator model: state key = prey position only
-      this.predator.setModelStateItems([this.prey]);
-      // Prey behaviour: state key = its own position only
-      this.prey.setStateItems([this.prey]);
-    } else {
-      // Lesson 3: joint state — both positions in the key
-      this.predator.setModelStateItems([this.prey, this.predator]);
-      this.prey.setStateItems([this.prey, this.predator]);
+    switch (this.lessonType) {
+      case LessonType.LESSON_2:
+        // Predator model: state key = prey position only
+        this.predator.setModelStateItems([this.prey]);
+        // Prey behaviour: state key = its own position only
+        this.prey.setStateItems([this.prey]);
+        break;
+      case LessonType.LESSON_3:
+        // Joint state — both positions in the key
+        this.predator.setModelStateItems([this.prey, this.predator]);
+        this.prey.setStateItems([this.prey, this.predator]);
+        break;
+      case LessonType.LESSON_4: {
+        const transformerModel = new TransformerWorldModel(
+          this.gridWorld, [this.prey, this.predator]
+        );
+        this.predator.setModel(transformerModel);
+        this.prey.setStateItems([this.prey, this.predator]);
+        break;
+      }
     }
   }
 
@@ -74,17 +91,23 @@ export class PredatorPreySimulation extends BaseSimulationController {
     );
 
     // Predator's learned model for the current state
-    const stateItems = this.lessonType === LessonType.LESSON_2
-      ? [this.prey]
-      : [this.prey, this.predator];
-    const stateKey = this.gridWorld.gridToString(stateItems);
-    const modelPolicy =
-      this.predator.preyModel.getMovementProbabilitiesForState(
-        stateKey
+    let predatorModelProbs: number[][];
+    if (this.lessonType === LessonType.LESSON_4) {
+      predatorModelProbs =
+        (this.predator.preyModel as TransformerWorldModel)
+          .getPositionGrid();
+    } else {
+      const stateItems = this.lessonType === LessonType.LESSON_2
+        ? [this.prey]
+        : [this.prey, this.predator];
+      const stateKey = this.gridWorld.gridToString(stateItems);
+      const modelPolicy =
+        (this.predator.preyModel as BayesianWorldModel)
+          .getMovementProbabilitiesForState(stateKey);
+      predatorModelProbs = this.gridWorld.policyToPositionGrid(
+        modelPolicy, this.prey.position
       );
-    const predatorModelProbs = this.gridWorld.policyToPositionGrid(
-      modelPolicy, this.prey.position
-    );
+    }
 
     return {
       agents: [
@@ -121,6 +144,11 @@ export class PredatorPreySimulation extends BaseSimulationController {
 
   reset(): void {
     this.pause();
+
+    // Dispose transformer model if applicable
+    if (this.predator.preyModel instanceof TransformerWorldModel) {
+      this.predator.preyModel.dispose();
+    }
 
     this.prey = new PolicyPreyAgent('prey1', [5, 5], this.gridWorld);
 

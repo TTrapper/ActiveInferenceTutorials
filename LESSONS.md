@@ -87,7 +87,7 @@ that have never been visited still get reasonable predictions because nearby
 states share structure.
 
 **Implementation notes:**
-- Use a simple MLP (2–3 hidden layers) running in the browser via a
+- Use a simple Transformer running in the browser via a
   lightweight library (e.g. TensorFlow.js or a minimal from-scratch
   implementation for pedagogical clarity).
 - Training happens online: each observed transition is a training example.

@@ -9,7 +9,8 @@ import { SimulationController } from './core/types';
 enum SimulationType {
   PREY_ONLY = 'prey_only',
   PREDATOR_PREY_L2 = 'predator_prey_l2',
-  PREDATOR_PREY_L3 = 'predator_prey_l3'
+  PREDATOR_PREY_L3 = 'predator_prey_l3',
+  PREDATOR_PREY_L4 = 'predator_prey_l4'
 }
 
 /**
@@ -68,7 +69,13 @@ function initialize() {
       `Lesson 3: State Space Explosion \u2014
       The predator\u2019s own position is added to the state key, giving
       1,024\u00d71,024 = 1,048,576 possible states. Learning is visibly
-      slower \u2014 this demonstrates the curse of dimensionality.`
+      slower \u2014 this demonstrates the curse of dimensionality.`,
+    [SimulationType.PREDATOR_PREY_L4]:
+      `Lesson 4: Function Approximation \u2014
+      The tabular model is replaced with a small transformer neural
+      network. It generalizes across states, learning the prey\u2019s
+      behavior much faster than the tabular model in L3\u2019s joint
+      state space.`
   };
 
   /**
@@ -77,7 +84,8 @@ function initialize() {
   function toggleVisionRangeSlider(simulationType: SimulationType) {
     if (visionRangeConfig && visionRangeConfig instanceof HTMLElement) {
       if (simulationType === SimulationType.PREDATOR_PREY_L2 ||
-          simulationType === SimulationType.PREDATOR_PREY_L3) {
+          simulationType === SimulationType.PREDATOR_PREY_L3 ||
+          simulationType === SimulationType.PREDATOR_PREY_L4) {
         visionRangeConfig.style.display = 'flex';
       } else {
         visionRangeConfig.style.display = 'none';
@@ -106,6 +114,10 @@ function initialize() {
       case SimulationType.PREDATOR_PREY_L3:
         currentSimulation =
           new PredatorPreySimulation(LessonType.LESSON_3);
+        break;
+      case SimulationType.PREDATOR_PREY_L4:
+        currentSimulation =
+          new PredatorPreySimulation(LessonType.LESSON_4);
         break;
     }
 

@@ -131,7 +131,7 @@ export class ActiveInferencePredator implements Agent {
   asciiSymbol = 'P';
   environment: GridWorld;
   preyBelief: number[][];
-  preyModel!: BayesianWorldModel;
+  preyModel!: PreyGenerativeModel;
   targetAgent: Agent | null = null;
   visionRange: number;
 
@@ -168,6 +168,13 @@ export class ActiveInferencePredator implements Agent {
    */
   setModelStateItems(stateItems: GridRenderable[]): void {
     this.preyModel = new BayesianWorldModel(this.environment, stateItems);
+  }
+
+  /**
+   * Replace the predator's world model with a custom model
+   */
+  setModel(model: PreyGenerativeModel): void {
+    this.preyModel = model;
   }
 
   /**
