@@ -119,6 +119,6 @@ export class PolicyPreyAgent implements Agent {
       this.position[1] + selectedMove[1]
     ];
 
-    this.position = this.environment.normalizePosition(newPosition);
+    this.position = this.environment.normalizePosition(newPosition, this.position);
   }
 }

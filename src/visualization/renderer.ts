@@ -15,6 +15,7 @@ export class PixiRenderer {
   cellSize: number;
   sprites: Map<string, PIXI.Graphics> = new Map();
   gridLines: PIXI.Graphics;
+  wallGraphics: PIXI.Graphics;
   beliefHeatmap: PIXI.Graphics;
   visionHeatmap: PIXI.Graphics;
   heatmapMode: HeatmapMode = 'prey_policy';
@@ -39,10 +40,12 @@ export class PixiRenderer {
     this.beliefHeatmap = new PIXI.Graphics();
     this.visionHeatmap = new PIXI.Graphics();
     this.gridLines = new PIXI.Graphics();
+    this.wallGraphics = new PIXI.Graphics();
 
     this.app.stage.addChild(this.beliefHeatmap);
     this.app.stage.addChild(this.visionHeatmap);
     this.app.stage.addChild(this.gridLines);
+    this.app.stage.addChild(this.wallGraphics);
 
     this.drawGrid();
   }
@@ -102,6 +105,11 @@ export class PixiRenderer {
 
     this.beliefHeatmap.clear();
     this.visionHeatmap.clear();
+    this.wallGraphics.clear();
+
+    if (state.walls) {
+      this.renderWalls(state.walls);
+    }
 
     // Render heatmap based on selected mode
     switch (this.heatmapMode) {
@@ -150,6 +158,22 @@ export class PixiRenderer {
         this.sprites.delete(id);
       }
     }
+  }
+
+  /**
+   * Render walls as dark gray rectangles
+   */
+  private renderWalls(walls: Position[]): void {
+    this.wallGraphics.beginFill(0x444444);
+    for (const pos of walls) {
+      this.wallGraphics.drawRect(
+        pos[0] * this.cellSize,
+        pos[1] * this.cellSize,
+        this.cellSize,
+        this.cellSize
+      );
+    }
+    this.wallGraphics.endFill();
   }
 
   /**

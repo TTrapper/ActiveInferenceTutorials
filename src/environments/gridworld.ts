@@ -6,9 +6,45 @@ import { Agent, Environment, GridRenderable, Position } from '../core/types';
 export class GridWorld implements Environment {
   size: number;
   agents: Agent[] = [];
+  private walls: Set<string> = new Set();
 
   constructor(size: number) {
     this.size = size;
+  }
+
+  /**
+   * Add a wall at the given position
+   */
+  addWall(position: Position): void {
+    this.walls.add(`${position[0]},${position[1]}`);
+  }
+
+  /**
+   * Remove a wall at the given position
+   */
+  removeWall(position: Position): void {
+    this.walls.delete(`${position[0]},${position[1]}`);
+  }
+
+  /**
+   * Check if there is a wall at the given position
+   */
+  isWall(position: Position): boolean {
+    return this.walls.has(`${position[0]},${position[1]}`);
+  }
+
+  /**
+   * Get all wall positions
+   */
+  getWalls(): Position[] {
+    return Array.from(this.walls).map(s => s.split(',').map(Number) as Position);
+  }
+
+  /**
+   * Clear all walls
+   */
+  clearWalls(): void {
+    this.walls.clear();
   }
 
   /**
@@ -31,22 +67,29 @@ export class GridWorld implements Environment {
   }
 
   /**
-   * Check if a position is valid within the grid
+   * Check if a position is valid within the grid (in bounds and not a wall)
    */
   isValidPosition(position: Position): boolean {
     return position[0] >= 0 && position[0] < this.size &&
-           position[1] >= 0 && position[1] < this.size;
+           position[1] >= 0 && position[1] < this.size &&
+           !this.isWall(position);
   }
 
   /**
-   * Constrain a position to ensure it's within grid boundaries (no wrapping)
+   * Constrain a position to ensure it's within grid boundaries (no wrapping).
+   * If the new position is a wall, it returns the currentPosition (staying put).
    */
-  normalizePosition(position: Position): Position {
-    // If the position is out of bounds, return the closest valid position
-    return [
+  normalizePosition(position: Position, currentPosition?: Position): Position {
+    const normalized: Position = [
       Math.max(0, Math.min(this.size - 1, position[0])),
       Math.max(0, Math.min(this.size - 1, position[1]))
     ];
+
+    if (this.isWall(normalized) && currentPosition) {
+      return [...currentPosition];
+    }
+
+    return normalized;
   }
 
   /**
@@ -106,10 +149,14 @@ export class GridWorld implements Environment {
     for (let i = 0; i < this.size; i++) {
       for (let j = 0; j < this.size; j++) {
         let cell = '.';
-        for (const item of renderables) {
-          if (item.position[0] === j && item.position[1] === i) {
-            cell = item.asciiSymbol;
-            break;
+        if (this.isWall([j, i])) {
+          cell = '#';
+        } else {
+          for (const item of renderables) {
+            if (item.position[0] === j && item.position[1] === i) {
+              cell = item.asciiSymbol;
+              break;
+            }
           }
         }
         result += cell;

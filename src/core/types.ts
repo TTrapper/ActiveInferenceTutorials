@@ -68,6 +68,7 @@ export interface SimulationState {
   predatorBelief?: number[][];
   preyTrueProbs?: number[][];
   predatorModelProbs?: number[][];
+  walls?: Position[];
   // General properties
   lessonType?: string;
   [key: string]: any; // Any additional simulation state

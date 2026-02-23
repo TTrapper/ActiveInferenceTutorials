@@ -5,7 +5,7 @@ import { PreyGenerativeModel } from './predator';
 
 const GRID_SIZE = 32;
 const NUM_TOKENS = GRID_SIZE * GRID_SIZE; // 1024
-const NUM_CATEGORIES = 3; // 0=empty, 1=prey, 2=predator
+const NUM_CATEGORIES = 4; // 0=empty, 1=prey, 2=predator, 3=wall
 const HIDDEN_DIM = 16;
 const FFN_DIM = 64;
 const LEARNING_RATE = 1e-2;
@@ -252,6 +252,14 @@ export class TransformerWorldModel implements PreyGenerativeModel {
    */
   private buildGridState(): number[] {
     const state = new Array(NUM_TOKENS).fill(0);
+
+    // Add walls from environment
+    const walls = this.environment.getWalls();
+    for (const wallPos of walls) {
+      const idx = wallPos[0] * GRID_SIZE + wallPos[1];
+      state[idx] = 3; // wall
+    }
+
     for (const item of this.stateItems) {
       const [x, y] = item.position;
       const idx = x * GRID_SIZE + y;

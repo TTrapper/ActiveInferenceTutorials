@@ -330,7 +330,7 @@ export class ActiveInferencePredator implements Agent {
         currentPos[0] + stepX, currentPos[1] + stepY
       ];
 
-      this.position = this.environment.normalizePosition(newPos);
+      this.position = this.environment.normalizePosition(newPos, this.position);
     }
   }
 

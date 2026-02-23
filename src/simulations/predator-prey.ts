@@ -17,7 +17,9 @@ export enum LessonType {
   /** Joint state: predator position added to state key (state explosion) */
   LESSON_3 = 'lesson3',
   /** Transformer world model replaces tabular model */
-  LESSON_4 = 'lesson4'
+  LESSON_4 = 'lesson4',
+  /** Environmental complexity: walls/obstacles */
+  LESSON_5 = 'lesson5'
 }
 
 // Fixed grid size for the predator-prey simulation
@@ -55,6 +57,36 @@ export class PredatorPreySimulation extends BaseSimulationController {
 
     // Now configure stateItems for both agents
     this.configureStateItems();
+
+    if (this.lessonType === LessonType.LESSON_5) {
+      this.generateObstacles();
+    }
+  }
+
+  /**
+   * Generate wall obstacles in the environment
+   */
+  private generateObstacles(): void {
+    this.gridWorld.clearWalls();
+
+    // Create a vertical wall in the center with gaps at the top and bottom
+    const centerX = Math.floor(FIXED_GRID_SIZE / 2);
+    const wallHeight = 18; // Solid wall in the middle
+    const startY = Math.floor((FIXED_GRID_SIZE - wallHeight) / 2);
+    for (let y = startY; y < startY + wallHeight; y++) {
+      this.gridWorld.addWall([centerX, y]);
+    }
+
+    // Create some random small blocks
+    for (let i = 0; i < 15; i++) {
+      const x = Math.floor(Math.random() * FIXED_GRID_SIZE);
+      const y = Math.floor(Math.random() * FIXED_GRID_SIZE);
+      // Don't place walls directly on agents
+      if ((Math.abs(x - this.prey.position[0]) > 2 || Math.abs(y - this.prey.position[1]) > 2) &&
+          (Math.abs(x - this.predator.position[0]) > 2 || Math.abs(y - this.predator.position[1]) > 2)) {
+        this.gridWorld.addWall([x, y]);
+      }
+    }
   }
 
   /**
@@ -73,7 +105,8 @@ export class PredatorPreySimulation extends BaseSimulationController {
         this.predator.setModelStateItems([this.prey, this.predator]);
         this.prey.setStateItems([this.prey, this.predator]);
         break;
-      case LessonType.LESSON_4: {
+      case LessonType.LESSON_4:
+      case LessonType.LESSON_5: {
         const transformerModel = new TransformerWorldModel(
           this.gridWorld, [this.prey, this.predator]
         );
@@ -93,7 +126,7 @@ export class PredatorPreySimulation extends BaseSimulationController {
 
     // Predator's learned model for the current state
     let predatorModelProbs: number[][];
-    if (this.lessonType === LessonType.LESSON_4) {
+    if (this.lessonType === LessonType.LESSON_4 || this.lessonType === LessonType.LESSON_5) {
       predatorModelProbs =
         (this.predator.preyModel as TransformerWorldModel)
           .getPositionGrid();
@@ -131,6 +164,7 @@ export class PredatorPreySimulation extends BaseSimulationController {
       preyTrueProbs,
       predatorModelProbs,
       predatorVision: this.predator.perceive(false),
+      walls: this.gridWorld.getWalls(),
       lessonType: this.lessonType
     };
   }
@@ -167,6 +201,10 @@ export class PredatorPreySimulation extends BaseSimulationController {
     this.gridWorld.addAgent(this.predator);
 
     this.configureStateItems();
+
+    if (this.lessonType === LessonType.LESSON_5) {
+      this.generateObstacles();
+    }
 
     this.notifyStateChange();
   }

@@ -10,7 +10,8 @@ enum SimulationType {
   PREY_ONLY = 'prey_only',
   PREDATOR_PREY_L2 = 'predator_prey_l2',
   PREDATOR_PREY_L3 = 'predator_prey_l3',
-  PREDATOR_PREY_L4 = 'predator_prey_l4'
+  PREDATOR_PREY_L4 = 'predator_prey_l4',
+  PREDATOR_PREY_L5 = 'predator_prey_l5'
 }
 
 /**
@@ -75,7 +76,12 @@ function initialize() {
       The tabular model is replaced with a small transformer neural
       network. It generalizes across states, learning the prey\u2019s
       behavior much faster than the tabular model in L3\u2019s joint
-      state space.`
+      state space.`,
+    [SimulationType.PREDATOR_PREY_L5]:
+      `Lesson 5: Environmental Complexity \u2014
+      Obstacles (walls) are introduced. The predator's hardcoded
+      "move toward prey" logic now fails as it gets stuck behind
+      walls, demonstrating the need for planning and preferences.`
   };
 
   /**
@@ -85,7 +91,8 @@ function initialize() {
     if (visionRangeConfig && visionRangeConfig instanceof HTMLElement) {
       if (simulationType === SimulationType.PREDATOR_PREY_L2 ||
           simulationType === SimulationType.PREDATOR_PREY_L3 ||
-          simulationType === SimulationType.PREDATOR_PREY_L4) {
+          simulationType === SimulationType.PREDATOR_PREY_L4 ||
+          simulationType === SimulationType.PREDATOR_PREY_L5) {
         visionRangeConfig.style.display = 'flex';
       } else {
         visionRangeConfig.style.display = 'none';
@@ -118,6 +125,10 @@ function initialize() {
       case SimulationType.PREDATOR_PREY_L4:
         currentSimulation =
           new PredatorPreySimulation(LessonType.LESSON_4);
+        break;
+      case SimulationType.PREDATOR_PREY_L5:
+        currentSimulation =
+          new PredatorPreySimulation(LessonType.LESSON_5);
         break;
     }
 
