@@ -8,7 +8,7 @@ const NUM_TOKENS = GRID_SIZE * GRID_SIZE; // 1024
 const NUM_CATEGORIES = 4; // 0=empty, 1=prey, 2=predator, 3=wall
 const HIDDEN_DIM = 16;
 const FFN_DIM = 64;
-const LEARNING_RATE = 1e-2;
+const LEARNING_RATE = 1e-3;
 
 /**
  * Generate sinusoidal position encodings
@@ -233,18 +233,22 @@ export class TransformerWorldModel implements PreyGenerativeModel {
    */
   private trainStep(gridState: number[], targetIndex: number): void {
     const target = tf.tensor1d([targetIndex], 'int32');
+    const oneHotTarget = tf.oneHot(target, NUM_TOKENS);
 
-    this.optimizer.minimize(() => {
-      const logits = this.forward(gridState);
-      const logitsReshaped = logits.reshape([1, NUM_TOKENS]);
-      const loss = tf.losses.softmaxCrossEntropy(
-        tf.oneHot(target, NUM_TOKENS),
-        logitsReshaped
-      );
-      return loss as tf.Scalar;
-    }, true, this.allVariables);
+    for (let i = 0; i < 10; i++) {
+      this.optimizer.minimize(() => {
+        const logits = this.forward(gridState);
+        const logitsReshaped = logits.reshape([1, NUM_TOKENS]);
+        const loss = tf.losses.softmaxCrossEntropy(
+          oneHotTarget,
+          logitsReshaped
+        );
+        return loss as tf.Scalar;
+      }, true, this.allVariables);
+    }
 
     target.dispose();
+    oneHotTarget.dispose();
   }
 
   /**
