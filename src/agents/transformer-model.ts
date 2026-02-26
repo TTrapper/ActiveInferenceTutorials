@@ -5,7 +5,17 @@ import { PreyGenerativeModel } from './predator';
 
 const GRID_SIZE = 32;
 const NUM_TOKENS = GRID_SIZE * GRID_SIZE; // 1024
-const NUM_CATEGORIES = 4; // 0=empty, 1=prey, 2=predator, 3=wall
+
+const TOKEN_MAP: Record<string, number> = {
+  empty: 0,
+  prey: 1,
+  predator: 2,
+  wall: 3,
+};
+const TOKEN_MAP_INV: Record<number, string> = Object.fromEntries(
+  Object.entries(TOKEN_MAP).map(([k, v]) => [v, k])
+);
+const NUM_CATEGORIES = Object.keys(TOKEN_MAP).length;
 const HIDDEN_DIM = 16;
 const FFN_DIM = 64;
 const LEARNING_RATE = 1e-3;
@@ -57,7 +67,7 @@ export class TransformerWorldModel implements PreyGenerativeModel {
   private lastPreyPosition: Position | null = null;
 
   // Replay buffer for batch training
-  private replayBuffer: { gridState: number[], targetIndex: number }[] = [];
+  private replayBuffer: { gridState: number[], nextGridState: number[] }[] = [];
   private bufferIndex = 0;
 
   // Embedding parameters
@@ -106,8 +116,8 @@ export class TransformerWorldModel implements PreyGenerativeModel {
   private ln4Beta!: tf.Variable;  // [16]
 
   // Output head
-  private Wout!: tf.Variable; // [16, 1]
-  private bout!: tf.Variable; // [1]
+  private Wout!: tf.Variable; // [16, NUM_CATEGORIES]
+  private bout!: tf.Variable; // [NUM_CATEGORIES]
 
   private optimizer!: tf.AdamOptimizer;
   private allVariables: tf.Variable[] = [];
@@ -206,9 +216,9 @@ export class TransformerWorldModel implements PreyGenerativeModel {
 
     // Output head
     this.Wout = tf.variable(
-      glorotUniform([HIDDEN_DIM, 1]), true, 'Wout'
+      glorotUniform([HIDDEN_DIM, NUM_CATEGORIES]), true, 'Wout'
     );
-    this.bout = tf.variable(tf.zeros([1]), true, 'bout');
+    this.bout = tf.variable(tf.zeros([NUM_CATEGORIES]), true, 'bout');
 
     this.allVariables = [
       this.contentEmbed,
@@ -239,7 +249,7 @@ export class TransformerWorldModel implements PreyGenerativeModel {
    * @param gridState Flat array of 1024 categorical values (0/1/2)
    * @returns 1024 logits (before softmax)
    */
-  forward(gridState: number[]): tf.Tensor1D {
+  forward(gridState: number[]): tf.Tensor2D {
     // Build token embeddings: content + pos (fixed)
     const indices = tf.tensor1d(gridState, 'int32');
     const contentVecs = tf.gather(this.contentEmbed, indices); // [1024, 16]
@@ -296,19 +306,19 @@ export class TransformerWorldModel implements PreyGenerativeModel {
     const ffnOut2 = ffn2.matMul(this.W4).add(this.b4);
     x = x.add(ffnOut2) as tf.Tensor2D;
 
-    // Output head: [1024, 16] -> [1024, 1] -> [1024]
-    const logits = x.matMul(this.Wout).add(this.bout).squeeze([1]);
-    return logits as tf.Tensor1D;
+    // Output head: [1024, 16] -> [1024, NUM_CATEGORIES]
+    const logits = x.matMul(this.Wout).add(this.bout);
+    return logits as tf.Tensor2D;
   }
 
   /**
    * Add a transition to the replay buffer (circular)
    */
-  private addToBuffer(gridState: number[], targetIndex: number): void {
+  private addToBuffer(gridState: number[], nextGridState: number[]): void {
     if (this.replayBuffer.length < BUFFER_SIZE) {
-      this.replayBuffer.push({ gridState, targetIndex });
+      this.replayBuffer.push({ gridState, nextGridState });
     } else {
-      this.replayBuffer[this.bufferIndex] = { gridState, targetIndex };
+      this.replayBuffer[this.bufferIndex] = { gridState, nextGridState };
     }
     this.bufferIndex = (this.bufferIndex + 1) % BUFFER_SIZE;
   }
@@ -318,8 +328,8 @@ export class TransformerWorldModel implements PreyGenerativeModel {
    */
   private sampleBatch(
     size: number
-  ): { gridState: number[], targetIndex: number }[] {
-    const batch: { gridState: number[], targetIndex: number }[] = [];
+  ): { gridState: number[], nextGridState: number[] }[] {
+    const batch: { gridState: number[], nextGridState: number[] }[] = [];
     for (let i = 0; i < size; i++) {
       const idx = Math.floor(Math.random() * this.replayBuffer.length);
       batch.push(this.replayBuffer[idx]);
@@ -334,17 +344,15 @@ export class TransformerWorldModel implements PreyGenerativeModel {
     if (this.replayBuffer.length < BATCH_SIZE) return;
 
     const batch = this.sampleBatch(BATCH_SIZE);
-
     this.optimizer.minimize(() => {
       let totalLoss: tf.Scalar = tf.scalar(0);
       for (const example of batch) {
         const target = tf.oneHot(
-          tf.tensor1d([example.targetIndex], 'int32'), NUM_TOKENS
+          tf.tensor1d(example.nextGridState, 'int32'), NUM_CATEGORIES
         );
         const logits = this.forward(example.gridState);
-        const logitsReshaped = logits.reshape([1, NUM_TOKENS]);
         const loss = tf.losses.softmaxCrossEntropy(
-          target, logitsReshaped
+          target, logits
         );
         totalLoss = totalLoss.add(loss) as tf.Scalar;
       }
@@ -362,16 +370,16 @@ export class TransformerWorldModel implements PreyGenerativeModel {
     const walls = this.environment.getWalls();
     for (const wallPos of walls) {
       const idx = wallPos[0] * GRID_SIZE + wallPos[1];
-      state[idx] = 3; // wall
+      state[idx] = TOKEN_MAP.wall;
     }
 
     for (const item of this.stateItems) {
       const [x, y] = item.position;
       const idx = x * GRID_SIZE + y;
       if (item.asciiSymbol === 'r') {
-        state[idx] = 1; // prey
+        state[idx] = TOKEN_MAP.prey;
       } else if (item.asciiSymbol === 'P') {
-        state[idx] = 2; // predator
+        state[idx] = TOKEN_MAP.predator;
       }
     }
     return state;
@@ -391,9 +399,7 @@ export class TransformerWorldModel implements PreyGenerativeModel {
     const currentGridState = this.buildGridState();
 
     if (this.lastGridState !== null && this.lastPreyPosition !== null) {
-      const targetIndex =
-        prey.position[0] * GRID_SIZE + prey.position[1];
-      this.addToBuffer(this.lastGridState, targetIndex);
+      this.addToBuffer(this.lastGridState, currentGridState);
       this.trainStep();
     }
 
@@ -434,16 +440,18 @@ export class TransformerWorldModel implements PreyGenerativeModel {
   }
 
   /**
-   * Get the position probability grid (32x32) directly from the model.
+   * Get the prey position probability grid (32x32) directly from the model.
    * Used by the renderer to display the heatmap without direction
    * conversion.
    */
   getPositionGrid(): number[][] {
     const gridState = this.buildGridState();
     const grid: number[][] = tf.tidy(() => {
-      const logits = this.forward(gridState);
-      const probsTensor = logits.softmax();
-      const probs2D = probsTensor.reshape([GRID_SIZE, GRID_SIZE]);
+      const perCellProbs = this.forward(gridState).softmax(-1); // [1024, 4]
+      const preyColumn = perCellProbs
+        .slice([0, TOKEN_MAP.prey], [-1, 1]).reshape([-1]); // [1024]
+      const normalized = preyColumn.div(preyColumn.sum()); // sums to 1
+      const probs2D = normalized.reshape([GRID_SIZE, GRID_SIZE]);
       return probs2D.arraySync() as number[][];
     });
     return grid;
