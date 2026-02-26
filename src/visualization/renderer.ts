@@ -86,6 +86,13 @@ export class PixiRenderer {
       });
       mouseText.anchor.set(0.5, 0.5);
       sprite.addChild(mouseText);
+    } else if (agentType === 'caught') {
+      const caughtText = new PIXI.Text('💥', {
+        fontSize: this.cellSize * 0.8,
+        align: 'center'
+      });
+      caughtText.anchor.set(0.5, 0.5);
+      sprite.addChild(caughtText);
     } else {
       sprite.beginFill(0x0000ff);
       sprite.drawCircle(0, 0, this.cellSize * 0.3);

@@ -143,19 +143,30 @@ export class PredatorPreySimulation extends BaseSimulationController {
       );
     }
 
+    const agents: SimulationState['agents'] = [
+      {
+        id: this.prey.id,
+        type: 'prey',
+        position: [...this.prey.position]
+      },
+      {
+        id: this.predator.id,
+        type: 'predator',
+        position: [...this.predator.position]
+      }
+    ];
+
+    if (this.prey.position[0] === this.predator.position[0] &&
+        this.prey.position[1] === this.predator.position[1]) {
+      agents.push({
+        id: 'caught',
+        type: 'caught',
+        position: [...this.prey.position]
+      });
+    }
+
     return {
-      agents: [
-        {
-          id: this.prey.id,
-          type: 'prey',
-          position: [...this.prey.position]
-        },
-        {
-          id: this.predator.id,
-          type: 'predator',
-          position: [...this.predator.position]
-        }
-      ],
+      agents,
       environment: {
         type: 'gridworld',
         size: this.gridWorld.size

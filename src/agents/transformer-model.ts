@@ -11,6 +11,7 @@ const TOKEN_MAP: Record<string, number> = {
   prey: 1,
   predator: 2,
   wall: 3,
+  caught: 4,
 };
 const TOKEN_MAP_INV: Record<number, string> = Object.fromEntries(
   Object.entries(TOKEN_MAP).map(([k, v]) => [v, k])
@@ -46,6 +47,7 @@ function glorotUniform(shape: number[]): tf.Tensor {
   const limit = Math.sqrt(6 / (fanIn + fanOut));
   return tf.randomUniform(shape, -limit, limit);
 }
+
 
 /**
  * Transformer-based world model that learns prey movement patterns.
@@ -130,7 +132,9 @@ export class TransformerWorldModel implements PreyGenerativeModel {
 
     // Warm-up forward pass to compile WebGL shaders
     tf.tidy(() => {
-      const dummy = new Array(NUM_TOKENS).fill(0);
+      const dummy = this.encodeGridState(
+        new Array(NUM_TOKENS).fill(0)
+      );
       this.forward(dummy);
     });
   }
@@ -245,14 +249,28 @@ export class TransformerWorldModel implements PreyGenerativeModel {
   }
 
   /**
-   * Forward pass through the transformer.
-   * @param gridState Flat array of 1024 categorical values (0/1/2)
-   * @returns 1024 logits (before softmax)
+   * Convert hard categorical grid state to one-hot soft input.
+   * @param gridState Flat array of 1024 categorical values (0-3)
+   * @returns [1024, NUM_CATEGORIES] one-hot tensor
    */
-  forward(gridState: number[]): tf.Tensor2D {
-    // Build token embeddings: content + pos (fixed)
-    const indices = tf.tensor1d(gridState, 'int32');
-    const contentVecs = tf.gather(this.contentEmbed, indices); // [1024, 16]
+  encodeGridState(gridState: number[]): tf.Tensor2D {
+    return tf.oneHot(
+      tf.tensor1d(gridState, 'int32'), NUM_CATEGORIES
+    ) as tf.Tensor2D;
+  }
+
+  /**
+   * Forward pass through the transformer.
+   * Accepts soft distribution inputs so predictions can be fed back
+   * autoregressively without collapsing to hard categories.
+   * @param inputProbs [1024, NUM_CATEGORIES] soft input distributions
+   * @returns [1024, NUM_CATEGORIES] logits (before softmax)
+   */
+  forward(inputProbs: tf.Tensor2D): tf.Tensor2D {
+    // Build token embeddings: weighted average of content embeddings
+    const contentVecs = inputProbs.matMul(
+      this.contentEmbed
+    ) as tf.Tensor2D; // [1024, 16]
 
     // Build x and y indices for each token
     const xIndices = tf.tensor1d(
@@ -350,7 +368,9 @@ export class TransformerWorldModel implements PreyGenerativeModel {
         const target = tf.oneHot(
           tf.tensor1d(example.nextGridState, 'int32'), NUM_CATEGORIES
         );
-        const logits = this.forward(example.gridState);
+        const logits = this.forward(
+          this.encodeGridState(example.gridState)
+        );
         const loss = tf.losses.softmaxCrossEntropy(
           target, logits
         );
@@ -361,12 +381,14 @@ export class TransformerWorldModel implements PreyGenerativeModel {
   }
 
   /**
-   * Build the flat grid state array from current environment state
+   * Build the flat grid state array from current environment state.
+   * @param predatorMove Optional move vector applied to the predator
+   *   position before encoding. Used to build hypothetical states for
+   *   action evaluation.
    */
-  private buildGridState(): number[] {
-    const state = new Array(NUM_TOKENS).fill(0);
+  buildGridState(predatorMove?: Position): number[] {
+    const state = new Array(NUM_TOKENS).fill(TOKEN_MAP.empty);
 
-    // Add walls from environment
     const walls = this.environment.getWalls();
     for (const wallPos of walls) {
       const idx = wallPos[0] * GRID_SIZE + wallPos[1];
@@ -374,15 +396,61 @@ export class TransformerWorldModel implements PreyGenerativeModel {
     }
 
     for (const item of this.stateItems) {
-      const [x, y] = item.position;
+      let [x, y] = item.position;
+      if (predatorMove && item.asciiSymbol === 'P') {
+        const moved = this.environment.normalizePosition(
+          [x + predatorMove[0], y + predatorMove[1]],
+          [x, y]
+        );
+        x = moved[0];
+        y = moved[1];
+      }
       const idx = x * GRID_SIZE + y;
       if (item.asciiSymbol === 'r') {
-        state[idx] = TOKEN_MAP.prey;
+        if (state[idx] === TOKEN_MAP.predator) {
+          state[idx] = TOKEN_MAP.caught;
+        } else {
+          state[idx] = TOKEN_MAP.prey;
+        }
       } else if (item.asciiSymbol === 'P') {
-        state[idx] = TOKEN_MAP.predator;
+        if (state[idx] === TOKEN_MAP.prey) {
+          state[idx] = TOKEN_MAP.caught;
+        } else {
+          state[idx] = TOKEN_MAP.predator;
+        }
       }
     }
     return state;
+  }
+
+  /**
+   * Build encoded grid states for each candidate action, deduplicating
+   * moves that resolve to the same state (e.g. two moves into walls).
+   * Returns a map from state key → { encoded tensor, action indices }.
+   */
+  buildCandidateStates(
+    moves: readonly (readonly [number, number])[]
+  ): Map<string, { encoded: tf.Tensor2D; actionIndices: number[] }> {
+    const candidates = new Map<
+      string, { encoded: tf.Tensor2D; actionIndices: number[] }
+    >();
+
+    for (let i = 0; i < moves.length; i++) {
+      const gridState = this.buildGridState(
+        [moves[i][0], moves[i][1]]
+      );
+      const key = gridState.join(',');
+      if (candidates.has(key)) {
+        candidates.get(key)!.actionIndices.push(i);
+      } else {
+        candidates.set(key, {
+          encoded: this.encodeGridState(gridState),
+          actionIndices: [i],
+        });
+      }
+    }
+
+    return candidates;
   }
 
   /**
@@ -447,7 +515,9 @@ export class TransformerWorldModel implements PreyGenerativeModel {
   getPositionGrid(): number[][] {
     const gridState = this.buildGridState();
     const grid: number[][] = tf.tidy(() => {
-      const perCellProbs = this.forward(gridState).softmax(-1); // [1024, 4]
+      const perCellProbs = this.forward(
+        this.encodeGridState(gridState)
+      ).softmax(-1); // [1024, 4]
       const preyColumn = perCellProbs
         .slice([0, TOKEN_MAP.prey], [-1, 1]).reshape([-1]); // [1024]
       const normalized = preyColumn.div(preyColumn.sum()); // sums to 1
@@ -455,6 +525,10 @@ export class TransformerWorldModel implements PreyGenerativeModel {
       return probs2D.arraySync() as number[][];
     });
     return grid;
+  }
+
+  getTokenMap(): Record<string, number> {
+    return TOKEN_MAP;
   }
 
   /**
@@ -471,7 +545,9 @@ export class TransformerWorldModel implements PreyGenerativeModel {
 
     // Warm-up forward pass
     tf.tidy(() => {
-      const dummy = new Array(NUM_TOKENS).fill(0);
+      const dummy = this.encodeGridState(
+        new Array(NUM_TOKENS).fill(0)
+      );
       this.forward(dummy);
     });
   }

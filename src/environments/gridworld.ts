@@ -152,11 +152,13 @@ export class GridWorld implements Environment {
         if (this.isWall([j, i])) {
           cell = '#';
         } else {
-          for (const item of renderables) {
-            if (item.position[0] === j && item.position[1] === i) {
-              cell = item.asciiSymbol;
-              break;
-            }
+          const matches = renderables.filter(
+            item => item.position[0] === j && item.position[1] === i
+          );
+          if (matches.length > 1) {
+            cell = 'X';
+          } else if (matches.length === 1) {
+            cell = matches[0].asciiSymbol;
           }
         }
         result += cell;
